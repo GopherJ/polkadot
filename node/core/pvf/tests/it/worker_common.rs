@@ -20,24 +20,24 @@ use std::time::Duration;
 
 #[async_std::test]
 async fn spawn_timeout() {
-	let result = spawn_with_program_path(
-		"integration-test",
-		PUPPET_EXE,
-		&["sleep"],
-		Duration::from_secs(2),
-	)
-	.await;
-	assert!(matches!(result, Err(SpawnErr::AcceptTimeout)));
+    let result = spawn_with_program_path(
+        "integration-test",
+        PUPPET_EXE,
+        &["sleep"],
+        Duration::from_secs(2),
+    )
+    .await;
+    assert!(matches!(result, Err(SpawnErr::AcceptTimeout)));
 }
 
 #[async_std::test]
 async fn should_connect() {
-	let _ = spawn_with_program_path(
-		"integration-test",
-		PUPPET_EXE,
-		&["prepare-worker"],
-		Duration::from_secs(2),
-	)
-	.await
-	.unwrap();
+    let _ = spawn_with_program_path(
+        "integration-test",
+        PUPPET_EXE,
+        &["prepare-worker"],
+        Duration::from_secs(2),
+    )
+    .await
+    .unwrap();
 }

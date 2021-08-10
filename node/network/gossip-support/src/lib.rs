@@ -24,25 +24,23 @@
 //! in this graph will be forwarded to the network bridge with
 //! the `NetworkBridgeMessage::NewGossipTopology` message.
 
-use std::time::{Duration, Instant};
 use futures::{channel::oneshot, FutureExt as _};
-use rand::{SeedableRng, seq::SliceRandom as _};
-use rand_chacha::ChaCha20Rng;
+use polkadot_node_network_protocol::peer_set::PeerSet;
 use polkadot_node_subsystem::{
-	messages::{
-		AllMessages, GossipSupportMessage, NetworkBridgeMessage,
-		RuntimeApiMessage, RuntimeApiRequest,
-	},
-	ActiveLeavesUpdate, FromOverseer, OverseerSignal,
-	Subsystem, SpawnedSubsystem, SubsystemContext,
+    messages::{
+        AllMessages, GossipSupportMessage, NetworkBridgeMessage, RuntimeApiMessage,
+        RuntimeApiRequest,
+    },
+    ActiveLeavesUpdate, FromOverseer, OverseerSignal, SpawnedSubsystem, Subsystem,
+    SubsystemContext,
 };
 use polkadot_node_subsystem_util as util;
-use polkadot_primitives::v1::{
-	Hash, SessionIndex, AuthorityDiscoveryId,
-};
-use polkadot_node_network_protocol::peer_set::PeerSet;
+use polkadot_primitives::v1::{AuthorityDiscoveryId, Hash, SessionIndex};
+use rand::{seq::SliceRandom as _, SeedableRng};
+use rand_chacha::ChaCha20Rng;
+use sp_application_crypto::{AppKey, Public};
 use sp_keystore::{CryptoStore, SyncCryptoStorePtr};
-use sp_application_crypto::{Public, AppKey};
+use std::time::{Duration, Instant};
 
 #[cfg(test)]
 mod tests;
@@ -54,118 +52,119 @@ const BACKOFF_DURATION: Duration = Duration::from_secs(5);
 
 /// The Gossip Support subsystem.
 pub struct GossipSupport {
-	keystore: SyncCryptoStorePtr,
+    keystore: SyncCryptoStorePtr,
 }
 
 #[derive(Default)]
 struct State {
-	last_session_index: Option<SessionIndex>,
-	// Some(timestamp) if we failed to resolve
-	// at least a third of authorities the last time.
-	// `None` otherwise.
-	last_failure: Option<Instant>,
+    last_session_index: Option<SessionIndex>,
+    // Some(timestamp) if we failed to resolve
+    // at least a third of authorities the last time.
+    // `None` otherwise.
+    last_failure: Option<Instant>,
 }
 
 impl GossipSupport {
-	/// Create a new instance of the [`GossipSupport`] subsystem.
-	pub fn new(keystore: SyncCryptoStorePtr) -> Self {
-		Self {
-			keystore,
-		}
-	}
+    /// Create a new instance of the [`GossipSupport`] subsystem.
+    pub fn new(keystore: SyncCryptoStorePtr) -> Self {
+        Self { keystore }
+    }
 
-	async fn run<Context>(self, ctx: Context)
-	where
-		Context: SubsystemContext<Message = GossipSupportMessage>,
-	{
-		let mut state = State::default();
-		self.run_inner(ctx, &mut state).await;
-	}
+    async fn run<Context>(self, ctx: Context)
+    where
+        Context: SubsystemContext<Message = GossipSupportMessage>,
+    {
+        let mut state = State::default();
+        self.run_inner(ctx, &mut state).await;
+    }
 
-	async fn run_inner<Context>(self, mut ctx: Context, state: &mut State)
-	where
-		Context: SubsystemContext<Message = GossipSupportMessage>,
-	{
-		let Self { keystore } = self;
-		loop {
-			let message = match ctx.recv().await {
-				Ok(message) => message,
-				Err(e) => {
-					tracing::debug!(
-						target: LOG_TARGET,
-						err = ?e,
-						"Failed to receive a message from Overseer, exiting",
-					);
-					return;
-				},
-			};
-			match message {
-				FromOverseer::Communication { .. } => {},
-				FromOverseer::Signal(OverseerSignal::ActiveLeaves(ActiveLeavesUpdate {
-					activated,
-					..
-				})) => {
-					tracing::trace!(target: LOG_TARGET, "active leaves signal");
+    async fn run_inner<Context>(self, mut ctx: Context, state: &mut State)
+    where
+        Context: SubsystemContext<Message = GossipSupportMessage>,
+    {
+        let Self { keystore } = self;
+        loop {
+            let message = match ctx.recv().await {
+                Ok(message) => message,
+                Err(e) => {
+                    tracing::debug!(
+                        target: LOG_TARGET,
+                        err = ?e,
+                        "Failed to receive a message from Overseer, exiting",
+                    );
+                    return;
+                }
+            };
+            match message {
+                FromOverseer::Communication { .. } => {}
+                FromOverseer::Signal(OverseerSignal::ActiveLeaves(ActiveLeavesUpdate {
+                    activated,
+                    ..
+                })) => {
+                    tracing::trace!(target: LOG_TARGET, "active leaves signal");
 
-					let leaves = activated.into_iter().map(|a| a.hash);
-					if let Err(e) = state.handle_active_leaves(&mut ctx, &keystore, leaves).await {
-						tracing::debug!(target: LOG_TARGET, error = ?e);
-					}
-				}
-				FromOverseer::Signal(OverseerSignal::BlockFinalized(_hash, _number)) => {},
-				FromOverseer::Signal(OverseerSignal::Conclude) => {
-					return;
-				}
-			}
-		}
-	}
+                    let leaves = activated.into_iter().map(|a| a.hash);
+                    if let Err(e) = state
+                        .handle_active_leaves(&mut ctx, &keystore, leaves)
+                        .await
+                    {
+                        tracing::debug!(target: LOG_TARGET, error = ?e);
+                    }
+                }
+                FromOverseer::Signal(OverseerSignal::BlockFinalized(_hash, _number)) => {}
+                FromOverseer::Signal(OverseerSignal::Conclude) => {
+                    return;
+                }
+            }
+        }
+    }
 }
 
 async fn determine_relevant_authorities(
-	ctx: &mut impl SubsystemContext,
-	relay_parent: Hash,
+    ctx: &mut impl SubsystemContext,
+    relay_parent: Hash,
 ) -> Result<Vec<AuthorityDiscoveryId>, util::Error> {
-	let authorities = util::request_authorities(relay_parent, ctx.sender()).await.await??;
-	tracing::debug!(
-		target: LOG_TARGET,
-		authority_count = ?authorities.len(),
-		"Determined relevant authorities",
-	);
-	Ok(authorities)
+    let authorities = util::request_authorities(relay_parent, ctx.sender())
+        .await
+        .await??;
+    tracing::debug!(
+        target: LOG_TARGET,
+        authority_count = ?authorities.len(),
+        "Determined relevant authorities",
+    );
+    Ok(authorities)
 }
 
 /// Return an error if we're not a validator in the given set (do not have keys).
 /// Otherwise, returns the index of our keys in `authorities`.
 async fn ensure_i_am_an_authority(
-	keystore: &SyncCryptoStorePtr,
-	authorities: &[AuthorityDiscoveryId],
+    keystore: &SyncCryptoStorePtr,
+    authorities: &[AuthorityDiscoveryId],
 ) -> Result<usize, util::Error> {
-	for (i, v) in authorities.iter().enumerate() {
-		if CryptoStore::has_keys(
-			&**keystore,
-			&[(v.to_raw_vec(), AuthorityDiscoveryId::ID)]
-		).await {
-			return Ok(i);
-		}
-	}
-	Err(util::Error::NotAValidator)
+    for (i, v) in authorities.iter().enumerate() {
+        if CryptoStore::has_keys(&**keystore, &[(v.to_raw_vec(), AuthorityDiscoveryId::ID)]).await {
+            return Ok(i);
+        }
+    }
+    Err(util::Error::NotAValidator)
 }
 
 /// A helper function for making a `ConnectToValidators` request.
 async fn connect_to_authorities(
-	ctx: &mut impl SubsystemContext,
-	validator_ids: Vec<AuthorityDiscoveryId>,
-	peer_set: PeerSet,
+    ctx: &mut impl SubsystemContext,
+    validator_ids: Vec<AuthorityDiscoveryId>,
+    peer_set: PeerSet,
 ) -> oneshot::Receiver<usize> {
-	let (failed, failed_rx) = oneshot::channel();
-	ctx.send_message(AllMessages::NetworkBridge(
-		NetworkBridgeMessage::ConnectToValidators {
-			validator_ids,
-			peer_set,
-			failed,
-		}
-	)).await;
-	failed_rx
+    let (failed, failed_rx) = oneshot::channel();
+    ctx.send_message(AllMessages::NetworkBridge(
+        NetworkBridgeMessage::ConnectToValidators {
+            validator_ids,
+            peer_set,
+            failed,
+        },
+    ))
+    .await;
+    failed_rx
 }
 
 /// We partition the list of all sorted `authorities` into sqrt(len) groups of sqrt(len) size
@@ -177,164 +176,166 @@ async fn connect_to_authorities(
 ///
 /// [web3]: https://research.web3.foundation/en/latest/polkadot/networking/3-avail-valid.html#topology
 async fn update_gossip_topology(
-	ctx: &mut impl SubsystemContext,
-	our_index: usize,
-	authorities: Vec<AuthorityDiscoveryId>,
-	relay_parent: Hash,
+    ctx: &mut impl SubsystemContext,
+    our_index: usize,
+    authorities: Vec<AuthorityDiscoveryId>,
+    relay_parent: Hash,
 ) -> Result<(), util::Error> {
-	// retrieve BABE randomness
-	let random_seed = {
-		let (tx, rx) = oneshot::channel();
+    // retrieve BABE randomness
+    let random_seed = {
+        let (tx, rx) = oneshot::channel();
 
-		ctx.send_message(RuntimeApiMessage::Request(
-			relay_parent,
-			RuntimeApiRequest::CurrentBabeEpoch(tx),
-		).into()).await;
+        ctx.send_message(
+            RuntimeApiMessage::Request(relay_parent, RuntimeApiRequest::CurrentBabeEpoch(tx))
+                .into(),
+        )
+        .await;
 
-		let randomness = rx.await??.randomness;
-		let mut subject = [0u8; 40];
-		subject[..8].copy_from_slice(b"gossipsu");
-		subject[8..].copy_from_slice(&randomness);
-		sp_core::blake2_256(&subject)
-	};
+        let randomness = rx.await??.randomness;
+        let mut subject = [0u8; 40];
+        subject[..8].copy_from_slice(b"gossipsu");
+        subject[8..].copy_from_slice(&randomness);
+        sp_core::blake2_256(&subject)
+    };
 
-	// shuffle the indices
-	let mut rng: ChaCha20Rng = SeedableRng::from_seed(random_seed);
-	let len = authorities.len();
-	let mut indices: Vec<usize> = (0..len).collect();
-	indices.shuffle(&mut rng);
-	let our_shuffled_position = indices.iter()
-		.position(|i| *i == our_index)
-		.expect("our_index < len; indices contains it; qed");
+    // shuffle the indices
+    let mut rng: ChaCha20Rng = SeedableRng::from_seed(random_seed);
+    let len = authorities.len();
+    let mut indices: Vec<usize> = (0..len).collect();
+    indices.shuffle(&mut rng);
+    let our_shuffled_position = indices
+        .iter()
+        .position(|i| *i == our_index)
+        .expect("our_index < len; indices contains it; qed");
 
-	let neighbors = matrix_neighbors(our_shuffled_position, len);
-	let our_neighbors = neighbors.map(|i| authorities[indices[i]].clone()).collect();
+    let neighbors = matrix_neighbors(our_shuffled_position, len);
+    let our_neighbors = neighbors.map(|i| authorities[indices[i]].clone()).collect();
 
-	ctx.send_message(AllMessages::NetworkBridge(
-		NetworkBridgeMessage::NewGossipTopology {
-			our_neighbors,
-		}
-	)).await;
+    ctx.send_message(AllMessages::NetworkBridge(
+        NetworkBridgeMessage::NewGossipTopology { our_neighbors },
+    ))
+    .await;
 
-	Ok(())
+    Ok(())
 }
 
 /// Compute our row and column neighbors in a matrix
-fn matrix_neighbors(our_index: usize, len: usize) -> impl Iterator<Item=usize> {
-	assert!(our_index < len, "our_index is computed using `enumerate`; qed");
+fn matrix_neighbors(our_index: usize, len: usize) -> impl Iterator<Item = usize> {
+    assert!(
+        our_index < len,
+        "our_index is computed using `enumerate`; qed"
+    );
 
-	// e.g. for size 11 the matrix would be
-	//
-	// 0  1  2
-	// 3  4  5
-	// 6  7  8
-	// 9 10
-	//
-	// and for index 10, the neighbors would be 1, 4, 7, 9
+    // e.g. for size 11 the matrix would be
+    //
+    // 0  1  2
+    // 3  4  5
+    // 6  7  8
+    // 9 10
+    //
+    // and for index 10, the neighbors would be 1, 4, 7, 9
 
-	let sqrt = (len as f64).sqrt() as usize;
-	let our_row = our_index / sqrt;
-	let our_column = our_index % sqrt;
-	let row_neighbors = our_row * sqrt..std::cmp::min(our_row * sqrt + sqrt, len);
-	let column_neighbors = (our_column..len).step_by(sqrt);
+    let sqrt = (len as f64).sqrt() as usize;
+    let our_row = our_index / sqrt;
+    let our_column = our_index % sqrt;
+    let row_neighbors = our_row * sqrt..std::cmp::min(our_row * sqrt + sqrt, len);
+    let column_neighbors = (our_column..len).step_by(sqrt);
 
-	row_neighbors.chain(column_neighbors).filter(move |i| *i != our_index)
+    row_neighbors
+        .chain(column_neighbors)
+        .filter(move |i| *i != our_index)
 }
 
 impl State {
-	/// 1. Determine if the current session index has changed.
-	/// 2. If it has, determine relevant validators
-	///    and issue a connection request.
-	async fn handle_active_leaves(
-		&mut self,
-		ctx: &mut impl SubsystemContext,
-		keystore: &SyncCryptoStorePtr,
-		leaves: impl Iterator<Item = Hash>,
-	) -> Result<(), util::Error> {
-		for leaf in leaves {
-			let current_index = util::request_session_index_for_child(leaf, ctx.sender()).await.await??;
-			let since_failure = self.last_failure.map(|i| i.elapsed()).unwrap_or_default();
-			let force_request = since_failure >= BACKOFF_DURATION;
-			let leaf_session = Some((current_index, leaf));
-			let maybe_new_session = match self.last_session_index {
-				Some(i) if current_index <= i => None,
-				_ => leaf_session,
-			};
+    /// 1. Determine if the current session index has changed.
+    /// 2. If it has, determine relevant validators
+    ///    and issue a connection request.
+    async fn handle_active_leaves(
+        &mut self,
+        ctx: &mut impl SubsystemContext,
+        keystore: &SyncCryptoStorePtr,
+        leaves: impl Iterator<Item = Hash>,
+    ) -> Result<(), util::Error> {
+        for leaf in leaves {
+            let current_index = util::request_session_index_for_child(leaf, ctx.sender())
+                .await
+                .await??;
+            let since_failure = self.last_failure.map(|i| i.elapsed()).unwrap_or_default();
+            let force_request = since_failure >= BACKOFF_DURATION;
+            let leaf_session = Some((current_index, leaf));
+            let maybe_new_session = match self.last_session_index {
+                Some(i) if current_index <= i => None,
+                _ => leaf_session,
+            };
 
-			let maybe_issue_connection = if force_request {
-				leaf_session
-			} else {
-				maybe_new_session
-			};
+            let maybe_issue_connection = if force_request {
+                leaf_session
+            } else {
+                maybe_new_session
+            };
 
-			if let Some((session_index, relay_parent)) = maybe_issue_connection {
-				let is_new_session = maybe_new_session.is_some();
-				if is_new_session {
-					tracing::debug!(
-						target: LOG_TARGET,
-						%session_index,
-						"New session detected",
-					);
-				}
+            if let Some((session_index, relay_parent)) = maybe_issue_connection {
+                let is_new_session = maybe_new_session.is_some();
+                if is_new_session {
+                    tracing::debug!(
+                        target: LOG_TARGET,
+                        %session_index,
+                        "New session detected",
+                    );
+                }
 
-				let authorities = determine_relevant_authorities(ctx, relay_parent).await?;
-				let our_index = ensure_i_am_an_authority(keystore, &authorities).await?;
+                let authorities = determine_relevant_authorities(ctx, relay_parent).await?;
+                let our_index = ensure_i_am_an_authority(keystore, &authorities).await?;
 
-				self.issue_connection_request(ctx, authorities.clone()).await?;
+                self.issue_connection_request(ctx, authorities.clone())
+                    .await?;
 
-				if is_new_session {
-					self.last_session_index = Some(session_index);
-					update_gossip_topology(ctx, our_index, authorities, relay_parent).await?;
-				}
-			}
+                if is_new_session {
+                    self.last_session_index = Some(session_index);
+                    update_gossip_topology(ctx, our_index, authorities, relay_parent).await?;
+                }
+            }
+        }
 
-		}
+        Ok(())
+    }
 
-		Ok(())
-	}
+    async fn issue_connection_request(
+        &mut self,
+        ctx: &mut impl SubsystemContext,
+        authorities: Vec<AuthorityDiscoveryId>,
+    ) -> Result<(), util::Error> {
+        let num = authorities.len();
+        tracing::debug!(target: LOG_TARGET, %num, "Issuing a connection request");
 
-	async fn issue_connection_request(
-		&mut self,
-		ctx: &mut impl SubsystemContext,
-		authorities: Vec<AuthorityDiscoveryId>,
-	) -> Result<(), util::Error> {
-		let num = authorities.len();
-		tracing::debug!(target: LOG_TARGET, %num, "Issuing a connection request");
+        let failures = connect_to_authorities(ctx, authorities, PeerSet::Validation).await;
 
-		let failures = connect_to_authorities(
-			ctx,
-			authorities,
-			PeerSet::Validation,
-		).await;
+        // we await for the request to be processed
+        // this is fine, it should take much less time than one session
+        let failures = failures.await.unwrap_or(num);
 
-		// we await for the request to be processed
-		// this is fine, it should take much less time than one session
-		let failures = failures.await.unwrap_or(num);
+        // issue another request for the same session
+        // if at least a third of the authorities were not resolved
+        self.last_failure = if failures >= num / 3 {
+            Some(Instant::now())
+        } else {
+            None
+        };
 
-		// issue another request for the same session
-		// if at least a third of the authorities were not resolved
-		self.last_failure = if failures >= num / 3 {
-			Some(Instant::now())
-		} else {
-			None
-		};
-
-		Ok(())
-	}
+        Ok(())
+    }
 }
 
 impl<Context> Subsystem<Context> for GossipSupport
 where
-	Context: SubsystemContext<Message = GossipSupportMessage> + Sync + Send,
+    Context: SubsystemContext<Message = GossipSupportMessage> + Sync + Send,
 {
-	fn start(self, ctx: Context) -> SpawnedSubsystem {
-		let future = self.run(ctx)
-			.map(|_| Ok(()))
-			.boxed();
+    fn start(self, ctx: Context) -> SpawnedSubsystem {
+        let future = self.run(ctx).map(|_| Ok(())).boxed();
 
-		SpawnedSubsystem {
-			name: "gossip-support-subsystem",
-			future,
-		}
-	}
+        SpawnedSubsystem {
+            name: "gossip-support-subsystem",
+            future,
+        }
+    }
 }

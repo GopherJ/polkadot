@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/polkadot/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,46 +42,46 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_tips.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_tips::WeightInfo for WeightInfo<T> {
-	fn report_awesome(r: u32, ) -> Weight {
-		(45_075_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((1_000 as Weight).saturating_mul(r as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn retract_tip() -> Weight {
-		(42_197_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn tip_new(r: u32, t: u32, ) -> Weight {
-		(27_673_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((2_000 as Weight).saturating_mul(r as Weight))
-			// Standard Error: 0
-			.saturating_add((117_000 as Weight).saturating_mul(t as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn tip(t: u32, ) -> Weight {
-		(17_648_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((536_000 as Weight).saturating_mul(t as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn close_tip(t: u32, ) -> Weight {
-		(77_210_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((301_000 as Weight).saturating_mul(t as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn slash_tip(t: u32, ) -> Weight {
-		(22_593_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((6_000 as Weight).saturating_mul(t as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
+    fn report_awesome(r: u32) -> Weight {
+        (45_075_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((1_000 as Weight).saturating_mul(r as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn retract_tip() -> Weight {
+        (42_197_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn tip_new(r: u32, t: u32) -> Weight {
+        (27_673_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((2_000 as Weight).saturating_mul(r as Weight))
+            // Standard Error: 0
+            .saturating_add((117_000 as Weight).saturating_mul(t as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn tip(t: u32) -> Weight {
+        (17_648_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((536_000 as Weight).saturating_mul(t as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn close_tip(t: u32) -> Weight {
+        (77_210_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((301_000 as Weight).saturating_mul(t as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn slash_tip(t: u32) -> Weight {
+        (22_593_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((6_000 as Weight).saturating_mul(t as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
 }

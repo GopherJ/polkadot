@@ -17,47 +17,47 @@
 //! The monitor command.
 
 use crate::{
-	params, prelude::*, rpc_helpers::*, signer::Signer, Error, MonitorConfig, SharedConfig,
+    params, prelude::*, rpc_helpers::*, signer::Signer, Error, MonitorConfig, SharedConfig,
 };
 use codec::Encode;
 use jsonrpsee_ws_client::{
-	traits::SubscriptionClient, v2::params::JsonRpcParams, Subscription, WsClient,
+    traits::SubscriptionClient, v2::params::JsonRpcParams, Subscription, WsClient,
 };
 use sp_transaction_pool::TransactionStatus;
 
 /// Ensure that now is the signed phase.
 async fn ensure_signed_phase<T: EPM::Config, B: BlockT>(
-	client: &WsClient,
-	at: B::Hash,
+    client: &WsClient,
+    at: B::Hash,
 ) -> Result<(), Error> {
-	let key = sp_core::storage::StorageKey(EPM::CurrentPhase::<T>::hashed_key().to_vec());
-	let phase = get_storage::<EPM::Phase<BlockNumber>>(client, params! {key, at})
-		.await?
-		.unwrap_or_default();
+    let key = sp_core::storage::StorageKey(EPM::CurrentPhase::<T>::hashed_key().to_vec());
+    let phase = get_storage::<EPM::Phase<BlockNumber>>(client, params! {key, at})
+        .await?
+        .unwrap_or_default();
 
-	if phase.is_signed() {
-		Ok(())
-	} else {
-		Err(Error::IncorrectPhase)
-	}
+    if phase.is_signed() {
+        Ok(())
+    } else {
+        Err(Error::IncorrectPhase)
+    }
 }
 
 /// Ensure that our current `us` have not submitted anything previously.
 async fn ensure_no_previous_solution<
-	T: EPM::Config + frame_system::Config<AccountId = AccountId>,
-	B: BlockT,
+    T: EPM::Config + frame_system::Config<AccountId = AccountId>,
+    B: BlockT,
 >(
-	ext: &mut Ext,
-	us: &AccountId,
+    ext: &mut Ext,
+    us: &AccountId,
 ) -> Result<(), Error> {
-	use EPM::signed::SignedSubmissions;
-	ext.execute_with(|| {
-		if <SignedSubmissions<T>>::get().iter().any(|ss| &ss.who == us) {
-			Err(Error::AlreadySubmitted)
-		} else {
-			Ok(())
-		}
-	})
+    use EPM::signed::SignedSubmissions;
+    ext.execute_with(|| {
+        if <SignedSubmissions<T>>::get().iter().any(|ss| &ss.who == us) {
+            Err(Error::AlreadySubmitted)
+        } else {
+            Ok(())
+        }
+    })
 }
 
 macro_rules! monitor_cmd_for { ($runtime:tt) => { paste::paste! {

@@ -24,33 +24,33 @@ use std::{fmt, sync::Arc};
 /// Should be cheap to clone.
 #[derive(Clone)]
 pub struct Pvf {
-	pub(crate) code: Arc<Vec<u8>>,
-	pub(crate) code_hash: ValidationCodeHash,
+    pub(crate) code: Arc<Vec<u8>>,
+    pub(crate) code_hash: ValidationCodeHash,
 }
 
 impl fmt::Debug for Pvf {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "Pvf {{ code, code_hash: {:?} }}", self.code_hash)
-	}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Pvf {{ code, code_hash: {:?} }}", self.code_hash)
+    }
 }
 
 impl Pvf {
-	/// Returns an instance of the PVF out of the given PVF code.
-	pub fn from_code(code: Vec<u8>) -> Self {
-		let code = Arc::new(code);
-		let code_hash = blake2_256(&code).into();
-		Self { code, code_hash }
-	}
+    /// Returns an instance of the PVF out of the given PVF code.
+    pub fn from_code(code: Vec<u8>) -> Self {
+        let code = Arc::new(code);
+        let code_hash = blake2_256(&code).into();
+        Self { code, code_hash }
+    }
 
-	/// Creates a new pvf which artifact id can be uniquely identified by the given number.
-	#[cfg(test)]
-	pub(crate) fn from_discriminator(num: u32) -> Self {
-		let descriminator_buf = num.to_le_bytes().to_vec();
-		Pvf::from_code(descriminator_buf)
-	}
+    /// Creates a new pvf which artifact id can be uniquely identified by the given number.
+    #[cfg(test)]
+    pub(crate) fn from_discriminator(num: u32) -> Self {
+        let descriminator_buf = num.to_le_bytes().to_vec();
+        Pvf::from_code(descriminator_buf)
+    }
 
-	/// Returns the artifact ID that corresponds to this PVF.
-	pub(crate) fn as_artifact_id(&self) -> ArtifactId {
-		ArtifactId::new(self.code_hash)
-	}
+    /// Returns the artifact ID that corresponds to this PVF.
+    pub(crate) fn as_artifact_id(&self) -> ArtifactId {
+        ArtifactId::new(self.code_hash)
+    }
 }

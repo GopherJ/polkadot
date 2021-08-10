@@ -19,14 +19,14 @@ use futures::{future::Either, FutureExt, StreamExt, TryFutureExt};
 use sp_keystore::SyncCryptoStorePtr;
 
 use polkadot_subsystem::{
-	messages::AvailabilityDistributionMessage, FromOverseer, OverseerSignal, SpawnedSubsystem,
-	Subsystem, SubsystemContext, SubsystemError,
+    messages::AvailabilityDistributionMessage, FromOverseer, OverseerSignal, SpawnedSubsystem,
+    Subsystem, SubsystemContext, SubsystemError,
 };
 
 /// Error and [`Result`] type for this subsystem.
 mod error;
 use error::Fatal;
-use error::{Result, log_error};
+use error::{log_error, Result};
 
 use polkadot_node_subsystem_util::runtime::RuntimeInfo;
 
@@ -52,107 +52,107 @@ const LOG_TARGET: &'static str = "parachain::availability-distribution";
 
 /// The availability distribution subsystem.
 pub struct AvailabilityDistributionSubsystem {
-	/// Easy and efficient runtime access for this subsystem.
-	runtime: RuntimeInfo,
-	/// Prometheus metrics.
-	metrics: Metrics,
+    /// Easy and efficient runtime access for this subsystem.
+    runtime: RuntimeInfo,
+    /// Prometheus metrics.
+    metrics: Metrics,
 }
 
 impl<Context> Subsystem<Context> for AvailabilityDistributionSubsystem
 where
-	Context: SubsystemContext<Message = AvailabilityDistributionMessage> + Sync + Send,
+    Context: SubsystemContext<Message = AvailabilityDistributionMessage> + Sync + Send,
 {
-	fn start(self, ctx: Context) -> SpawnedSubsystem {
-		let future = self
-			.run(ctx)
-			.map_err(|e| SubsystemError::with_origin("availability-distribution", e))
-			.boxed();
+    fn start(self, ctx: Context) -> SpawnedSubsystem {
+        let future = self
+            .run(ctx)
+            .map_err(|e| SubsystemError::with_origin("availability-distribution", e))
+            .boxed();
 
-		SpawnedSubsystem {
-			name: "availability-distribution-subsystem",
-			future,
-		}
-	}
+        SpawnedSubsystem {
+            name: "availability-distribution-subsystem",
+            future,
+        }
+    }
 }
 
 impl AvailabilityDistributionSubsystem {
+    /// Create a new instance of the availability distribution.
+    pub fn new(keystore: SyncCryptoStorePtr, metrics: Metrics) -> Self {
+        let runtime = RuntimeInfo::new(Some(keystore));
+        Self { runtime, metrics }
+    }
 
-	/// Create a new instance of the availability distribution.
-	pub fn new(keystore: SyncCryptoStorePtr, metrics: Metrics) -> Self {
-		let runtime = RuntimeInfo::new(Some(keystore));
-		Self { runtime,  metrics }
-	}
+    /// Start processing work as passed on from the Overseer.
+    async fn run<Context>(mut self, mut ctx: Context) -> std::result::Result<(), Fatal>
+    where
+        Context: SubsystemContext<Message = AvailabilityDistributionMessage> + Sync + Send,
+    {
+        let mut requester = Requester::new(self.metrics.clone()).fuse();
+        loop {
+            let action = {
+                let mut subsystem_next = ctx.recv().fuse();
+                futures::select! {
+                    subsystem_msg = subsystem_next => Either::Left(subsystem_msg),
+                    from_task = requester.next() => Either::Right(from_task),
+                }
+            };
 
-	/// Start processing work as passed on from the Overseer.
-	async fn run<Context>(mut self, mut ctx: Context) -> std::result::Result<(), Fatal>
-	where
-		Context: SubsystemContext<Message = AvailabilityDistributionMessage> + Sync + Send,
-	{
-		let mut requester = Requester::new(self.metrics.clone()).fuse();
-		loop {
-			let action = {
-				let mut subsystem_next = ctx.recv().fuse();
-				futures::select! {
-					subsystem_msg = subsystem_next => Either::Left(subsystem_msg),
-					from_task = requester.next() => Either::Right(from_task),
-				}
-			};
-
-			// Handle task messages sending:
-			let message = match action {
-				Either::Left(subsystem_msg) => {
-					subsystem_msg.map_err(|e| Fatal::IncomingMessageChannel(e))?
-				}
-				Either::Right(from_task) => {
-					let from_task = from_task.ok_or(Fatal::RequesterExhausted)?;
-					ctx.send_message(from_task).await;
-					continue;
-				}
-			};
-			match message {
-				FromOverseer::Signal(OverseerSignal::ActiveLeaves(update)) => {
-					log_error(
-						requester.get_mut().update_fetching_heads(&mut ctx, &mut self.runtime, update).await,
-						"Error in Requester::update_fetching_heads"
-					)?;
-				}
-				FromOverseer::Signal(OverseerSignal::BlockFinalized(..)) => {}
-				FromOverseer::Signal(OverseerSignal::Conclude) => {
-					return Ok(());
-				}
-				FromOverseer::Communication {
-					msg: AvailabilityDistributionMessage::ChunkFetchingRequest(req),
-				} => {
-					answer_chunk_request_log(&mut ctx, req, &self.metrics).await
-				}
-				FromOverseer::Communication {
-					msg: AvailabilityDistributionMessage::PoVFetchingRequest(req),
-				} => {
-					answer_pov_request_log(&mut ctx, req, &self.metrics).await
-				}
-				FromOverseer::Communication {
-					msg: AvailabilityDistributionMessage::FetchPoV {
-						relay_parent,
-						from_validator,
-						candidate_hash,
-						pov_hash,
-						tx,
-					},
-				} => {
-					log_error(
-						pov_requester::fetch_pov(
-							&mut ctx,
-							&mut self.runtime,
-							relay_parent,
-							from_validator,
-							candidate_hash,
-							pov_hash,
-							tx,
-						).await,
-						"pov_requester::fetch_pov"
-					)?;
-				}
-			}
-		}
-	}
+            // Handle task messages sending:
+            let message = match action {
+                Either::Left(subsystem_msg) => {
+                    subsystem_msg.map_err(|e| Fatal::IncomingMessageChannel(e))?
+                }
+                Either::Right(from_task) => {
+                    let from_task = from_task.ok_or(Fatal::RequesterExhausted)?;
+                    ctx.send_message(from_task).await;
+                    continue;
+                }
+            };
+            match message {
+                FromOverseer::Signal(OverseerSignal::ActiveLeaves(update)) => {
+                    log_error(
+                        requester
+                            .get_mut()
+                            .update_fetching_heads(&mut ctx, &mut self.runtime, update)
+                            .await,
+                        "Error in Requester::update_fetching_heads",
+                    )?;
+                }
+                FromOverseer::Signal(OverseerSignal::BlockFinalized(..)) => {}
+                FromOverseer::Signal(OverseerSignal::Conclude) => {
+                    return Ok(());
+                }
+                FromOverseer::Communication {
+                    msg: AvailabilityDistributionMessage::ChunkFetchingRequest(req),
+                } => answer_chunk_request_log(&mut ctx, req, &self.metrics).await,
+                FromOverseer::Communication {
+                    msg: AvailabilityDistributionMessage::PoVFetchingRequest(req),
+                } => answer_pov_request_log(&mut ctx, req, &self.metrics).await,
+                FromOverseer::Communication {
+                    msg:
+                        AvailabilityDistributionMessage::FetchPoV {
+                            relay_parent,
+                            from_validator,
+                            candidate_hash,
+                            pov_hash,
+                            tx,
+                        },
+                } => {
+                    log_error(
+                        pov_requester::fetch_pov(
+                            &mut ctx,
+                            &mut self.runtime,
+                            relay_parent,
+                            from_validator,
+                            candidate_hash,
+                            pov_hash,
+                            tx,
+                        )
+                        .await,
+                        "pov_requester::fetch_pov",
+                    )?;
+                }
+            }
+        }
+    }
 }

@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/polkadot/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,29 +42,29 @@ use sp_std::marker::PhantomData;
 /// Weight functions for runtime_common::claims.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> runtime_common::claims::WeightInfo for WeightInfo<T> {
-	fn claim() -> Weight {
-		(435_155_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-	}
-	fn mint_claim() -> Weight {
-		(11_642_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn claim_attest() -> Weight {
-		(437_198_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(7 as Weight))
-			.saturating_add(T::DbWeight::get().writes(6 as Weight))
-	}
-	fn attest() -> Weight {
-		(124_628_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
-	}
-	fn move_claim() -> Weight {
-		(25_441_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(7 as Weight))
-	}
+    fn claim() -> Weight {
+        (435_155_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(7 as Weight))
+            .saturating_add(T::DbWeight::get().writes(6 as Weight))
+    }
+    fn mint_claim() -> Weight {
+        (11_642_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+    }
+    fn claim_attest() -> Weight {
+        (437_198_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(7 as Weight))
+            .saturating_add(T::DbWeight::get().writes(6 as Weight))
+    }
+    fn attest() -> Weight {
+        (124_628_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(8 as Weight))
+            .saturating_add(T::DbWeight::get().writes(7 as Weight))
+    }
+    fn move_claim() -> Weight {
+        (25_441_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(4 as Weight))
+            .saturating_add(T::DbWeight::get().writes(7 as Weight))
+    }
 }

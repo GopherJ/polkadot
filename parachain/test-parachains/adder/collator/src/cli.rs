@@ -22,13 +22,13 @@ use structopt::StructOpt;
 /// Sub-commands supported by the collator.
 #[derive(Debug, StructOpt)]
 pub enum Subcommand {
-	/// Export the genesis state of the parachain.
-	#[structopt(name = "export-genesis-state")]
-	ExportGenesisState(ExportGenesisStateCommand),
+    /// Export the genesis state of the parachain.
+    #[structopt(name = "export-genesis-state")]
+    ExportGenesisState(ExportGenesisStateCommand),
 
-	/// Export the genesis wasm of the parachain.
-	#[structopt(name = "export-genesis-wasm")]
-	ExportGenesisWasm(ExportGenesisWasmCommand),
+    /// Export the genesis wasm of the parachain.
+    #[structopt(name = "export-genesis-wasm")]
+    ExportGenesisWasm(ExportGenesisWasmCommand),
 }
 
 /// Command for exporting the genesis state of the parachain
@@ -42,74 +42,74 @@ pub struct ExportGenesisWasmCommand {}
 #[allow(missing_docs)]
 #[derive(Debug, StructOpt)]
 pub struct RunCmd {
-	#[allow(missing_docs)]
-	#[structopt(flatten)]
-	pub base: sc_cli::RunCmd,
+    #[allow(missing_docs)]
+    #[structopt(flatten)]
+    pub base: sc_cli::RunCmd,
 
-	/// Id of the parachain this collator collates for.
-	#[structopt(long)]
-	pub parachain_id: Option<u32>,
+    /// Id of the parachain this collator collates for.
+    #[structopt(long)]
+    pub parachain_id: Option<u32>,
 }
 
 #[allow(missing_docs)]
 #[derive(Debug, StructOpt)]
 pub struct Cli {
-	#[structopt(subcommand)]
-	pub subcommand: Option<Subcommand>,
+    #[structopt(subcommand)]
+    pub subcommand: Option<Subcommand>,
 
-	#[structopt(flatten)]
-	pub run: RunCmd,
+    #[structopt(flatten)]
+    pub run: RunCmd,
 }
 
 impl SubstrateCli for Cli {
-	fn impl_name() -> String {
-		"Parity Polkadot".into()
-	}
+    fn impl_name() -> String {
+        "Parity Polkadot".into()
+    }
 
-	fn impl_version() -> String {
-		"0.0.0".into()
-	}
+    fn impl_version() -> String {
+        "0.0.0".into()
+    }
 
-	fn description() -> String {
-		env!("CARGO_PKG_DESCRIPTION").into()
-	}
+    fn description() -> String {
+        env!("CARGO_PKG_DESCRIPTION").into()
+    }
 
-	fn author() -> String {
-		env!("CARGO_PKG_AUTHORS").into()
-	}
+    fn author() -> String {
+        env!("CARGO_PKG_AUTHORS").into()
+    }
 
-	fn support_url() -> String {
-		"https://github.com/paritytech/polkadot/issues/new".into()
-	}
+    fn support_url() -> String {
+        "https://github.com/paritytech/polkadot/issues/new".into()
+    }
 
-	fn copyright_start_year() -> i32 {
-		2017
-	}
+    fn copyright_start_year() -> i32 {
+        2017
+    }
 
-	fn executable_name() -> String {
-		"polkadot".into()
-	}
+    fn executable_name() -> String {
+        "polkadot".into()
+    }
 
-	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		let id = if id.is_empty() { "rococo" } else { id };
-		Ok(match id {
-			"rococo-staging" => {
-				Box::new(polkadot_service::chain_spec::rococo_staging_testnet_config()?)
-			}
-			"rococo-local" => {
-				Box::new(polkadot_service::chain_spec::rococo_local_testnet_config()?)
-			}
-			"rococo" => Box::new(polkadot_service::chain_spec::rococo_config()?),
-			path => {
-				let path = std::path::PathBuf::from(path);
-				Box::new(polkadot_service::RococoChainSpec::from_json_file(path)?)
-			}
-		})
-	}
+    fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
+        let id = if id.is_empty() { "rococo" } else { id };
+        Ok(match id {
+            "rococo-staging" => {
+                Box::new(polkadot_service::chain_spec::rococo_staging_testnet_config()?)
+            }
+            "rococo-local" => {
+                Box::new(polkadot_service::chain_spec::rococo_local_testnet_config()?)
+            }
+            "rococo" => Box::new(polkadot_service::chain_spec::rococo_config()?),
+            path => {
+                let path = std::path::PathBuf::from(path);
+                Box::new(polkadot_service::RococoChainSpec::from_json_file(path)?)
+            }
+        })
+    }
 
-	fn native_runtime_version(
-		_spec: &Box<dyn polkadot_service::ChainSpec>,
-	) -> &'static RuntimeVersion {
-		&polkadot_service::rococo_runtime::VERSION
-	}
+    fn native_runtime_version(
+        _spec: &Box<dyn polkadot_service::ChainSpec>,
+    ) -> &'static RuntimeVersion {
+        &polkadot_service::rococo_runtime::VERSION
+    }
 }

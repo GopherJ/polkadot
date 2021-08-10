@@ -17,54 +17,64 @@
 //! The dry-run command.
 
 use crate::{
-	params, prelude::*, rpc_helpers::*, signer::Signer, DryRunConfig, Error, SharedConfig, WsClient,
+    params, prelude::*, rpc_helpers::*, signer::Signer, DryRunConfig, Error, SharedConfig, WsClient,
 };
 use codec::Encode;
 
 /// Forcefully create the snapshot. This can be used to compute the election at anytime.
 fn force_create_snapshot<T: EPM::Config>(ext: &mut Ext) -> Result<(), Error> {
-	ext.execute_with(|| {
-		if <EPM::Snapshot<T>>::exists() {
-			log::info!(target: LOG_TARGET, "snapshot already exists.");
-			Ok(())
-		} else {
-			log::info!(target: LOG_TARGET, "creating a fake snapshot now.");
-			<EPM::Pallet<T>>::create_snapshot().map(|_| ()).map_err(Into::into)
-		}
-	})
+    ext.execute_with(|| {
+        if <EPM::Snapshot<T>>::exists() {
+            log::info!(target: LOG_TARGET, "snapshot already exists.");
+            Ok(())
+        } else {
+            log::info!(target: LOG_TARGET, "creating a fake snapshot now.");
+            <EPM::Pallet<T>>::create_snapshot()
+                .map(|_| ())
+                .map_err(Into::into)
+        }
+    })
 }
 
 /// Helper method to print the encoded size of the snapshot.
 fn measure_snapshot_size<T: EPM::Config>(ext: &mut Ext) {
-	ext.execute_with(|| {
-		log::info!(target: LOG_TARGET, "Metadata: {:?}", <EPM::Pallet<T>>::snapshot_metadata());
-		log::info!(
-			target: LOG_TARGET,
-			"Encoded Length: {:?}",
-			<EPM::Pallet<T>>::snapshot()
-				.expect("snapshot must exist before calling `measure_snapshot_size`")
-				.encode()
-				.len()
-		);
-	})
+    ext.execute_with(|| {
+        log::info!(
+            target: LOG_TARGET,
+            "Metadata: {:?}",
+            <EPM::Pallet<T>>::snapshot_metadata()
+        );
+        log::info!(
+            target: LOG_TARGET,
+            "Encoded Length: {:?}",
+            <EPM::Pallet<T>>::snapshot()
+                .expect("snapshot must exist before calling `measure_snapshot_size`")
+                .encode()
+                .len()
+        );
+    })
 }
 
 /// Find the stake threshold in order to have at most `count` voters.
 #[allow(unused)]
 fn find_threshold<T: EPM::Config>(ext: &mut Ext, count: usize) {
-	ext.execute_with(|| {
-		let mut voters = <EPM::Pallet<T>>::snapshot()
-			.expect("snapshot must exist before calling `measure_snapshot_size`")
-			.voters;
-		voters.sort_by_key(|(_voter, weight, _targets)| std::cmp::Reverse(*weight));
-		match voters.get(count) {
-			Some(threshold_voter) => println!("smallest allowed voter is {:?}", threshold_voter),
-			None => {
-				println!("requested truncation to {} voters but had only {}", count, voters.len());
-				println!("smallest current voter: {:?}", voters.last());
-			}
-		}
-	})
+    ext.execute_with(|| {
+        let mut voters = <EPM::Pallet<T>>::snapshot()
+            .expect("snapshot must exist before calling `measure_snapshot_size`")
+            .voters;
+        voters.sort_by_key(|(_voter, weight, _targets)| std::cmp::Reverse(*weight));
+        match voters.get(count) {
+            Some(threshold_voter) => println!("smallest allowed voter is {:?}", threshold_voter),
+            None => {
+                println!(
+                    "requested truncation to {} voters but had only {}",
+                    count,
+                    voters.len()
+                );
+                println!("smallest current voter: {:?}", voters.last());
+            }
+        }
+    })
 }
 
 macro_rules! dry_run_cmd_for { ($runtime:ident) => { paste::paste! {

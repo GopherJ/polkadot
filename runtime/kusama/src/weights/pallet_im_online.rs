@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/kusama/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,13 +42,13 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_im_online.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_im_online::WeightInfo for WeightInfo<T> {
-	fn validate_unsigned_and_then_heartbeat(k: u32, e: u32, ) -> Weight {
-		(87_465_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((169_000 as Weight).saturating_mul(k as Weight))
-			// Standard Error: 1_000
-			.saturating_add((335_000 as Weight).saturating_mul(e as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
+    fn validate_unsigned_and_then_heartbeat(k: u32, e: u32) -> Weight {
+        (87_465_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((169_000 as Weight).saturating_mul(k as Weight))
+            // Standard Error: 1_000
+            .saturating_add((335_000 as Weight).saturating_mul(e as Weight))
+            .saturating_add(T::DbWeight::get().reads(4 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }

@@ -18,9 +18,11 @@
 
 use parity_scale_codec::{Decode, Encode};
 
-use polkadot_primitives::v1::{CandidateHash, CandidateReceipt, CommittedCandidateReceipt, Hash, ValidatorIndex};
+use polkadot_node_primitives::{AvailableData, ErasureChunk, PoV};
 use polkadot_primitives::v1::Id as ParaId;
-use polkadot_node_primitives::{AvailableData, PoV, ErasureChunk};
+use polkadot_primitives::v1::{
+    CandidateHash, CandidateReceipt, CommittedCandidateReceipt, Hash, ValidatorIndex,
+};
 
 use super::request::IsRequest;
 use super::Protocol;
@@ -28,30 +30,30 @@ use super::Protocol;
 /// Request an availability chunk.
 #[derive(Debug, Copy, Clone, Encode, Decode)]
 pub struct ChunkFetchingRequest {
-	/// Hash of candidate we want a chunk for.
-	pub candidate_hash: CandidateHash,
-	/// The index of the chunk to fetch.
-	pub index: ValidatorIndex,
+    /// Hash of candidate we want a chunk for.
+    pub candidate_hash: CandidateHash,
+    /// The index of the chunk to fetch.
+    pub index: ValidatorIndex,
 }
 
 /// Receive a requested erasure chunk.
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum ChunkFetchingResponse {
-	/// The requested chunk data.
-	#[codec(index = 0)]
-	Chunk(ChunkResponse),
-	/// Node was not in possession of the requested chunk.
-	#[codec(index = 1)]
-	NoSuchChunk,
+    /// The requested chunk data.
+    #[codec(index = 0)]
+    Chunk(ChunkResponse),
+    /// Node was not in possession of the requested chunk.
+    #[codec(index = 1)]
+    NoSuchChunk,
 }
 
 impl From<Option<ChunkResponse>> for ChunkFetchingResponse {
-	fn from(x: Option<ChunkResponse>) -> Self {
-		match x {
-			Some(c) => ChunkFetchingResponse::Chunk(c),
-			None => ChunkFetchingResponse::NoSuchChunk,
-		}
-	}
+    fn from(x: Option<ChunkResponse>) -> Self {
+        match x {
+            Some(c) => ChunkFetchingResponse::Chunk(c),
+            None => ChunkFetchingResponse::NoSuchChunk,
+        }
+    }
 }
 
 /// Skimmed down variant of `ErasureChunk`.
@@ -62,118 +64,124 @@ impl From<Option<ChunkResponse>> for ChunkFetchingResponse {
 /// value for validating the response, thus making sure he got what he requested.
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct ChunkResponse {
-	/// The erasure-encoded chunk of data belonging to the candidate block.
-	pub chunk: Vec<u8>,
-	/// Proof for this chunk's branch in the Merkle tree.
-	pub proof: Vec<Vec<u8>>,
+    /// The erasure-encoded chunk of data belonging to the candidate block.
+    pub chunk: Vec<u8>,
+    /// Proof for this chunk's branch in the Merkle tree.
+    pub proof: Vec<Vec<u8>>,
 }
 
 impl From<ErasureChunk> for ChunkResponse {
-	fn from(ErasureChunk {chunk, index: _, proof}: ErasureChunk) -> Self {
-		ChunkResponse {chunk, proof}
-	}
+    fn from(
+        ErasureChunk {
+            chunk,
+            index: _,
+            proof,
+        }: ErasureChunk,
+    ) -> Self {
+        ChunkResponse { chunk, proof }
+    }
 }
 
 impl ChunkResponse {
-	/// Re-build an `ErasureChunk` from response and request.
-	pub fn recombine_into_chunk(self, req: &ChunkFetchingRequest) -> ErasureChunk {
-		ErasureChunk {
-			chunk: self.chunk,
-			proof: self.proof,
-			index: req.index,
-		}
-	}
+    /// Re-build an `ErasureChunk` from response and request.
+    pub fn recombine_into_chunk(self, req: &ChunkFetchingRequest) -> ErasureChunk {
+        ErasureChunk {
+            chunk: self.chunk,
+            proof: self.proof,
+            index: req.index,
+        }
+    }
 }
 
 impl IsRequest for ChunkFetchingRequest {
-	type Response = ChunkFetchingResponse;
-	const PROTOCOL: Protocol = Protocol::ChunkFetching;
+    type Response = ChunkFetchingResponse;
+    const PROTOCOL: Protocol = Protocol::ChunkFetching;
 }
 
 /// Request the advertised collation at that relay-parent.
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct CollationFetchingRequest {
-	/// Relay parent we want a collation for.
-	pub relay_parent: Hash,
-	/// The `ParaId` of the collation.
-	pub para_id: ParaId,
+    /// Relay parent we want a collation for.
+    pub relay_parent: Hash,
+    /// The `ParaId` of the collation.
+    pub para_id: ParaId,
 }
 
 /// Responses as sent by collators.
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum CollationFetchingResponse {
-	/// Deliver requested collation.
-	#[codec(index = 0)]
-	Collation(CandidateReceipt, PoV),
+    /// Deliver requested collation.
+    #[codec(index = 0)]
+    Collation(CandidateReceipt, PoV),
 }
 
 impl IsRequest for CollationFetchingRequest {
-	type Response = CollationFetchingResponse;
-	const PROTOCOL: Protocol = Protocol::CollationFetching;
+    type Response = CollationFetchingResponse;
+    const PROTOCOL: Protocol = Protocol::CollationFetching;
 }
 
 /// Request the advertised collation at that relay-parent.
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct PoVFetchingRequest {
-	/// Candidate we want a PoV for.
-	pub candidate_hash: CandidateHash,
+    /// Candidate we want a PoV for.
+    pub candidate_hash: CandidateHash,
 }
 
 /// Responses to `PoVFetchingRequest`.
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum PoVFetchingResponse {
-	/// Deliver requested PoV.
-	#[codec(index = 0)]
-	PoV(PoV),
-	/// PoV was not found in store.
-	#[codec(index = 1)]
-	NoSuchPoV,
+    /// Deliver requested PoV.
+    #[codec(index = 0)]
+    PoV(PoV),
+    /// PoV was not found in store.
+    #[codec(index = 1)]
+    NoSuchPoV,
 }
 
 impl IsRequest for PoVFetchingRequest {
-	type Response = PoVFetchingResponse;
-	const PROTOCOL: Protocol = Protocol::PoVFetching;
+    type Response = PoVFetchingResponse;
+    const PROTOCOL: Protocol = Protocol::PoVFetching;
 }
 
 /// Request the entire available data for a candidate.
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct AvailableDataFetchingRequest {
-	/// The candidate hash to get the available data for.
-	pub candidate_hash: CandidateHash,
+    /// The candidate hash to get the available data for.
+    pub candidate_hash: CandidateHash,
 }
 
 /// Receive a requested available data.
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum AvailableDataFetchingResponse {
-	/// The requested data.
-	#[codec(index = 0)]
-	AvailableData(AvailableData),
-	/// Node was not in possession of the requested data.
-	#[codec(index = 1)]
-	NoSuchData,
+    /// The requested data.
+    #[codec(index = 0)]
+    AvailableData(AvailableData),
+    /// Node was not in possession of the requested data.
+    #[codec(index = 1)]
+    NoSuchData,
 }
 
 impl From<Option<AvailableData>> for AvailableDataFetchingResponse {
-	fn from(x: Option<AvailableData>) -> Self {
-		match x {
-			Some(data) => AvailableDataFetchingResponse::AvailableData(data),
-			None => AvailableDataFetchingResponse::NoSuchData,
-		}
-	}
+    fn from(x: Option<AvailableData>) -> Self {
+        match x {
+            Some(data) => AvailableDataFetchingResponse::AvailableData(data),
+            None => AvailableDataFetchingResponse::NoSuchData,
+        }
+    }
 }
 
 impl IsRequest for AvailableDataFetchingRequest {
-	type Response = AvailableDataFetchingResponse;
-	const PROTOCOL: Protocol = Protocol::AvailableDataFetching;
+    type Response = AvailableDataFetchingResponse;
+    const PROTOCOL: Protocol = Protocol::AvailableDataFetching;
 }
 
 /// Request for fetching a large statement via request/response.
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct StatementFetchingRequest {
-	/// Data needed to locate and identify the needed statement.
-	pub relay_parent: Hash,
-	/// Hash of candidate that was used create the CommitedCandidateRecept.
-	pub candidate_hash: CandidateHash,
+    /// Data needed to locate and identify the needed statement.
+    pub relay_parent: Hash,
+    /// Hash of candidate that was used create the CommitedCandidateRecept.
+    pub candidate_hash: CandidateHash,
 }
 
 /// Respond with found full statement.
@@ -183,12 +191,12 @@ pub struct StatementFetchingRequest {
 /// `RequestFailure`.
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum StatementFetchingResponse {
-	/// Data missing to reconstruct the full signed statement.
-	#[codec(index = 0)]
-	Statement(CommittedCandidateReceipt),
+    /// Data missing to reconstruct the full signed statement.
+    #[codec(index = 0)]
+    Statement(CommittedCandidateReceipt),
 }
 
 impl IsRequest for StatementFetchingRequest {
-	type Response = StatementFetchingResponse;
-	const PROTOCOL: Protocol = Protocol::StatementFetching;
+    type Response = StatementFetchingResponse;
+    const PROTOCOL: Protocol = Protocol::StatementFetching;
 }

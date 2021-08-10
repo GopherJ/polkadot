@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/kusama/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,80 +42,80 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_multisig.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_multisig::WeightInfo for WeightInfo<T> {
-	fn as_multi_threshold_1(_z: u32, ) -> Weight {
-		(10_273_000 as Weight)
-	}
-	fn as_multi_create(s: u32, z: u32, ) -> Weight {
-		(50_795_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((85_000 as Weight).saturating_mul(s as Weight))
-			// Standard Error: 0
-			.saturating_add((1_000 as Weight).saturating_mul(z as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn as_multi_create_store(s: u32, z: u32, ) -> Weight {
-		(56_223_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((91_000 as Weight).saturating_mul(s as Weight))
-			// Standard Error: 0
-			.saturating_add((2_000 as Weight).saturating_mul(z as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn as_multi_approve(s: u32, z: u32, ) -> Weight {
-		(29_190_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((86_000 as Weight).saturating_mul(s as Weight))
-			// Standard Error: 0
-			.saturating_add((1_000 as Weight).saturating_mul(z as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn as_multi_approve_store(s: u32, z: u32, ) -> Weight {
-		(53_138_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((98_000 as Weight).saturating_mul(s as Weight))
-			// Standard Error: 0
-			.saturating_add((2_000 as Weight).saturating_mul(z as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn as_multi_complete(s: u32, z: u32, ) -> Weight {
-		(73_267_000 as Weight)
-			// Standard Error: 2_000
-			.saturating_add((195_000 as Weight).saturating_mul(s as Weight))
-			// Standard Error: 0
-			.saturating_add((4_000 as Weight).saturating_mul(z as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn approve_as_multi_create(s: u32, ) -> Weight {
-		(50_201_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((83_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn approve_as_multi_approve(s: u32, ) -> Weight {
-		(28_525_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((88_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn approve_as_multi_complete(s: u32, ) -> Weight {
-		(120_751_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((196_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn cancel_as_multi(s: u32, ) -> Weight {
-		(86_776_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((86_000 as Weight).saturating_mul(s as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
+    fn as_multi_threshold_1(_z: u32) -> Weight {
+        (10_273_000 as Weight)
+    }
+    fn as_multi_create(s: u32, z: u32) -> Weight {
+        (50_795_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((85_000 as Weight).saturating_mul(s as Weight))
+            // Standard Error: 0
+            .saturating_add((1_000 as Weight).saturating_mul(z as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn as_multi_create_store(s: u32, z: u32) -> Weight {
+        (56_223_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((91_000 as Weight).saturating_mul(s as Weight))
+            // Standard Error: 0
+            .saturating_add((2_000 as Weight).saturating_mul(z as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn as_multi_approve(s: u32, z: u32) -> Weight {
+        (29_190_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((86_000 as Weight).saturating_mul(s as Weight))
+            // Standard Error: 0
+            .saturating_add((1_000 as Weight).saturating_mul(z as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn as_multi_approve_store(s: u32, z: u32) -> Weight {
+        (53_138_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((98_000 as Weight).saturating_mul(s as Weight))
+            // Standard Error: 0
+            .saturating_add((2_000 as Weight).saturating_mul(z as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn as_multi_complete(s: u32, z: u32) -> Weight {
+        (73_267_000 as Weight)
+            // Standard Error: 2_000
+            .saturating_add((195_000 as Weight).saturating_mul(s as Weight))
+            // Standard Error: 0
+            .saturating_add((4_000 as Weight).saturating_mul(z as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn approve_as_multi_create(s: u32) -> Weight {
+        (50_201_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((83_000 as Weight).saturating_mul(s as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn approve_as_multi_approve(s: u32) -> Weight {
+        (28_525_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((88_000 as Weight).saturating_mul(s as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn approve_as_multi_complete(s: u32) -> Weight {
+        (120_751_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((196_000 as Weight).saturating_mul(s as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn cancel_as_multi(s: u32) -> Weight {
+        (86_776_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((86_000 as Weight).saturating_mul(s as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
 }

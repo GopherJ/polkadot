@@ -16,10 +16,10 @@
 
 //! Various implementations for the `MatchesFungible` trait.
 
-use sp_std::{marker::PhantomData, convert::TryFrom};
-use sp_runtime::traits::CheckedConversion;
-use xcm::v0::{MultiAsset, MultiLocation};
 use frame_support::traits::Get;
+use sp_runtime::traits::CheckedConversion;
+use sp_std::{convert::TryFrom, marker::PhantomData};
+use xcm::v0::{MultiAsset, MultiLocation};
 use xcm_executor::traits::MatchesFungible;
 
 /// Converts a `MultiAsset` into balance `B` if it is a concrete fungible with an id equal to that
@@ -45,13 +45,14 @@ use xcm_executor::traits::MatchesFungible;
 /// ```
 pub struct IsConcrete<T>(PhantomData<T>);
 impl<T: Get<MultiLocation>, B: TryFrom<u128>> MatchesFungible<B> for IsConcrete<T> {
-	fn matches_fungible(a: &MultiAsset) -> Option<B> {
-		match a {
-			MultiAsset::ConcreteFungible { id, amount } if id == &T::get() =>
-				CheckedConversion::checked_from(*amount),
-			_ => None,
-		}
-	}
+    fn matches_fungible(a: &MultiAsset) -> Option<B> {
+        match a {
+            MultiAsset::ConcreteFungible { id, amount } if id == &T::get() => {
+                CheckedConversion::checked_from(*amount)
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Same as [`IsConcrete`] but for a fungible with abstract location.
@@ -75,11 +76,12 @@ impl<T: Get<MultiLocation>, B: TryFrom<u128>> MatchesFungible<B> for IsConcrete<
 /// ```
 pub struct IsAbstract<T>(PhantomData<T>);
 impl<T: Get<&'static [u8]>, B: TryFrom<u128>> MatchesFungible<B> for IsAbstract<T> {
-	fn matches_fungible(a: &MultiAsset) -> Option<B> {
-		match a {
-			MultiAsset::AbstractFungible { id, amount } if &id[..] == T::get() =>
-				CheckedConversion::checked_from(*amount),
-			_ => None,
-		}
-	}
+    fn matches_fungible(a: &MultiAsset) -> Option<B> {
+        match a {
+            MultiAsset::AbstractFungible { id, amount } if &id[..] == T::get() => {
+                CheckedConversion::checked_from(*amount)
+            }
+            _ => None,
+        }
+    }
 }

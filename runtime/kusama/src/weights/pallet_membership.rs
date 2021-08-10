@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/kusama/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,52 +42,52 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_membership.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_membership::WeightInfo for WeightInfo<T> {
-	fn add_member(m: u32, ) -> Weight {
-		(23_510_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((126_000 as Weight).saturating_mul(m as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn remove_member(m: u32, ) -> Weight {
-		(28_576_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((102_000 as Weight).saturating_mul(m as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn swap_member(m: u32, ) -> Weight {
-		(28_826_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((117_000 as Weight).saturating_mul(m as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn reset_member(m: u32, ) -> Weight {
-		(29_556_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((271_000 as Weight).saturating_mul(m as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn change_key(m: u32, ) -> Weight {
-		(30_300_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((113_000 as Weight).saturating_mul(m as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn set_prime(m: u32, ) -> Weight {
-		(7_436_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((84_000 as Weight).saturating_mul(m as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn clear_prime(m: u32, ) -> Weight {
-		(2_947_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((1_000 as Weight).saturating_mul(m as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
+    fn add_member(m: u32) -> Weight {
+        (23_510_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((126_000 as Weight).saturating_mul(m as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn remove_member(m: u32) -> Weight {
+        (28_576_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((102_000 as Weight).saturating_mul(m as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn swap_member(m: u32) -> Weight {
+        (28_826_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((117_000 as Weight).saturating_mul(m as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn reset_member(m: u32) -> Weight {
+        (29_556_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((271_000 as Weight).saturating_mul(m as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn change_key(m: u32) -> Weight {
+        (30_300_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((113_000 as Weight).saturating_mul(m as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+    }
+    fn set_prime(m: u32) -> Weight {
+        (7_436_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((84_000 as Weight).saturating_mul(m as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn clear_prime(m: u32) -> Weight {
+        (2_947_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((1_000 as Weight).saturating_mul(m as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
 }

@@ -21,27 +21,31 @@
 
 use bitvec::vec::BitVec;
 use futures::{
-	channel::{mpsc, oneshot},
-	prelude::*,
+    channel::{mpsc, oneshot},
+    prelude::*,
 };
+use futures_timer::Delay;
 use polkadot_node_subsystem::{
-	errors::{ChainApiError, RuntimeApiError}, PerLeafSpan, SubsystemSender, jaeger,
-	messages::{
-		CandidateBackingMessage, ChainApiMessage, ProvisionableData, ProvisionerInherentData,
-		ProvisionerMessage,
-	},
+    errors::{ChainApiError, RuntimeApiError},
+    jaeger,
+    messages::{
+        CandidateBackingMessage, ChainApiMessage, ProvisionableData, ProvisionerInherentData,
+        ProvisionerMessage,
+    },
+    PerLeafSpan, SubsystemSender,
 };
 use polkadot_node_subsystem_util::{
-	self as util, JobSubsystem, JobSender,
-	request_availability_cores, request_persisted_validation_data, JobTrait, metrics::{self, prometheus},
+    self as util,
+    metrics::{self, prometheus},
+    request_availability_cores, request_persisted_validation_data, JobSender, JobSubsystem,
+    JobTrait,
 };
 use polkadot_primitives::v1::{
-	BackedCandidate, BlockNumber, CandidateReceipt, CoreState, Hash, OccupiedCoreAssumption,
-	SignedAvailabilityBitfield, ValidatorIndex,
+    BackedCandidate, BlockNumber, CandidateReceipt, CoreState, Hash, OccupiedCoreAssumption,
+    SignedAvailabilityBitfield, ValidatorIndex,
 };
-use std::{pin::Pin, collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, pin::Pin, sync::Arc};
 use thiserror::Error;
-use futures_timer::Delay;
 
 #[cfg(test)]
 mod tests;
@@ -52,211 +56,216 @@ const PRE_PROPOSE_TIMEOUT: std::time::Duration = core::time::Duration::from_mill
 const LOG_TARGET: &str = "parachain::provisioner";
 
 enum InherentAfter {
-	Ready,
-	Wait(Delay),
+    Ready,
+    Wait(Delay),
 }
 
 impl InherentAfter {
-	fn new_from_now() -> Self {
-		InherentAfter::Wait(Delay::new(PRE_PROPOSE_TIMEOUT))
-	}
+    fn new_from_now() -> Self {
+        InherentAfter::Wait(Delay::new(PRE_PROPOSE_TIMEOUT))
+    }
 
-	fn is_ready(&self) -> bool {
-		match *self {
-			InherentAfter::Ready => true,
-			InherentAfter::Wait(_) => false,
-		}
-	}
+    fn is_ready(&self) -> bool {
+        match *self {
+            InherentAfter::Ready => true,
+            InherentAfter::Wait(_) => false,
+        }
+    }
 
-	async fn ready(&mut self) {
-		match *self {
-			InherentAfter::Ready => {
-				// Make sure we never end the returned future.
-				// This is required because the `select!` that calls this future will end in a busy loop.
-				futures::pending!()
-			},
-			InherentAfter::Wait(ref mut d) => {
-				d.await;
-				*self = InherentAfter::Ready;
-			},
-		}
-	}
+    async fn ready(&mut self) {
+        match *self {
+            InherentAfter::Ready => {
+                // Make sure we never end the returned future.
+                // This is required because the `select!` that calls this future will end in a busy loop.
+                futures::pending!()
+            }
+            InherentAfter::Wait(ref mut d) => {
+                d.await;
+                *self = InherentAfter::Ready;
+            }
+        }
+    }
 }
 
 /// A per-relay-parent job for the provisioning subsystem.
 pub struct ProvisioningJob {
-	relay_parent: Hash,
-	receiver: mpsc::Receiver<ProvisionerMessage>,
-	backed_candidates: Vec<CandidateReceipt>,
-	signed_bitfields: Vec<SignedAvailabilityBitfield>,
-	metrics: Metrics,
-	inherent_after: InherentAfter,
-	awaiting_inherent: Vec<oneshot::Sender<ProvisionerInherentData>>
+    relay_parent: Hash,
+    receiver: mpsc::Receiver<ProvisionerMessage>,
+    backed_candidates: Vec<CandidateReceipt>,
+    signed_bitfields: Vec<SignedAvailabilityBitfield>,
+    metrics: Metrics,
+    inherent_after: InherentAfter,
+    awaiting_inherent: Vec<oneshot::Sender<ProvisionerInherentData>>,
 }
 
 /// Errors in the provisioner.
 #[derive(Debug, Error)]
 #[allow(missing_docs)]
 pub enum Error {
-	#[error(transparent)]
-	Util(#[from] util::Error),
+    #[error(transparent)]
+    Util(#[from] util::Error),
 
-	#[error("failed to get availability cores")]
-	CanceledAvailabilityCores(#[source] oneshot::Canceled),
+    #[error("failed to get availability cores")]
+    CanceledAvailabilityCores(#[source] oneshot::Canceled),
 
-	#[error("failed to get persisted validation data")]
-	CanceledPersistedValidationData(#[source] oneshot::Canceled),
+    #[error("failed to get persisted validation data")]
+    CanceledPersistedValidationData(#[source] oneshot::Canceled),
 
-	#[error("failed to get block number")]
-	CanceledBlockNumber(#[source] oneshot::Canceled),
+    #[error("failed to get block number")]
+    CanceledBlockNumber(#[source] oneshot::Canceled),
 
-	#[error("failed to get backed candidates")]
-	CanceledBackedCandidates(#[source] oneshot::Canceled),
+    #[error("failed to get backed candidates")]
+    CanceledBackedCandidates(#[source] oneshot::Canceled),
 
-	#[error(transparent)]
-	ChainApi(#[from] ChainApiError),
+    #[error(transparent)]
+    ChainApi(#[from] ChainApiError),
 
-	#[error(transparent)]
-	Runtime(#[from] RuntimeApiError),
+    #[error(transparent)]
+    Runtime(#[from] RuntimeApiError),
 
-	#[error("failed to send message to ChainAPI")]
-	ChainApiMessageSend(#[source] mpsc::SendError),
+    #[error("failed to send message to ChainAPI")]
+    ChainApiMessageSend(#[source] mpsc::SendError),
 
-	#[error("failed to send message to CandidateBacking to get backed candidates")]
-	GetBackedCandidatesSend(#[source] mpsc::SendError),
+    #[error("failed to send message to CandidateBacking to get backed candidates")]
+    GetBackedCandidatesSend(#[source] mpsc::SendError),
 
-	#[error("failed to send return message with Inherents")]
-	InherentDataReturnChannel,
+    #[error("failed to send return message with Inherents")]
+    InherentDataReturnChannel,
 
-	#[error("backed candidate does not correspond to selected candidate; check logic in provisioner")]
-	BackedCandidateOrderingProblem,
+    #[error(
+        "backed candidate does not correspond to selected candidate; check logic in provisioner"
+    )]
+    BackedCandidateOrderingProblem,
 }
 
 impl JobTrait for ProvisioningJob {
-	type ToJob = ProvisionerMessage;
-	type Error = Error;
-	type RunArgs = ();
-	type Metrics = Metrics;
+    type ToJob = ProvisionerMessage;
+    type Error = Error;
+    type RunArgs = ();
+    type Metrics = Metrics;
 
-	const NAME: &'static str = "ProvisioningJob";
+    const NAME: &'static str = "ProvisioningJob";
 
-	/// Run a job for the parent block indicated
-	//
-	// this function is in charge of creating and executing the job's main loop
-	fn run<S: SubsystemSender>(
-		relay_parent: Hash,
-		span: Arc<jaeger::Span>,
-		_run_args: Self::RunArgs,
-		metrics: Self::Metrics,
-		receiver: mpsc::Receiver<ProvisionerMessage>,
-		mut sender: JobSender<S>,
-	) -> Pin<Box<dyn Future<Output = Result<(), Self::Error>> + Send>> {
-		async move {
-			let job = ProvisioningJob::new(
-				relay_parent,
-				metrics,
-				receiver,
-			);
+    /// Run a job for the parent block indicated
+    //
+    // this function is in charge of creating and executing the job's main loop
+    fn run<S: SubsystemSender>(
+        relay_parent: Hash,
+        span: Arc<jaeger::Span>,
+        _run_args: Self::RunArgs,
+        metrics: Self::Metrics,
+        receiver: mpsc::Receiver<ProvisionerMessage>,
+        mut sender: JobSender<S>,
+    ) -> Pin<Box<dyn Future<Output = Result<(), Self::Error>> + Send>> {
+        async move {
+            let job = ProvisioningJob::new(relay_parent, metrics, receiver);
 
-			job.run_loop(sender.subsystem_sender(), PerLeafSpan::new(span, "provisioner")).await
-		}
-		.boxed()
-	}
+            job.run_loop(
+                sender.subsystem_sender(),
+                PerLeafSpan::new(span, "provisioner"),
+            )
+            .await
+        }
+        .boxed()
+    }
 }
 
 impl ProvisioningJob {
-	fn new(
-		relay_parent: Hash,
-		metrics: Metrics,
-		receiver: mpsc::Receiver<ProvisionerMessage>,
-	) -> Self {
-		Self {
-			relay_parent,
-			receiver,
-			backed_candidates: Vec::new(),
-			signed_bitfields: Vec::new(),
-			metrics,
-			inherent_after: InherentAfter::new_from_now(),
-			awaiting_inherent: Vec::new(),
-		}
-	}
+    fn new(
+        relay_parent: Hash,
+        metrics: Metrics,
+        receiver: mpsc::Receiver<ProvisionerMessage>,
+    ) -> Self {
+        Self {
+            relay_parent,
+            receiver,
+            backed_candidates: Vec::new(),
+            signed_bitfields: Vec::new(),
+            metrics,
+            inherent_after: InherentAfter::new_from_now(),
+            awaiting_inherent: Vec::new(),
+        }
+    }
 
-	async fn run_loop(
-		mut self,
-		sender: &mut impl SubsystemSender,
-		span: PerLeafSpan,
-	) -> Result<(), Error> {
-		use ProvisionerMessage::{
-			ProvisionableData, RequestInherentData,
-		};
-		loop {
-			futures::select! {
-				msg = self.receiver.next().fuse() => match msg {
-					Some(RequestInherentData(_, return_sender)) => {
-						let _span = span.child("req-inherent-data");
-						let _timer = self.metrics.time_request_inherent_data();
+    async fn run_loop(
+        mut self,
+        sender: &mut impl SubsystemSender,
+        span: PerLeafSpan,
+    ) -> Result<(), Error> {
+        use ProvisionerMessage::{ProvisionableData, RequestInherentData};
+        loop {
+            futures::select! {
+                msg = self.receiver.next().fuse() => match msg {
+                    Some(RequestInherentData(_, return_sender)) => {
+                        let _span = span.child("req-inherent-data");
+                        let _timer = self.metrics.time_request_inherent_data();
 
-						if self.inherent_after.is_ready() {
-							self.send_inherent_data(sender, vec![return_sender]).await;
-						} else {
-							self.awaiting_inherent.push(return_sender);
-						}
-					}
-					Some(ProvisionableData(_, data)) => {
-						let span = span.child("provisionable-data");
-						let _timer = self.metrics.time_provisionable_data();
+                        if self.inherent_after.is_ready() {
+                            self.send_inherent_data(sender, vec![return_sender]).await;
+                        } else {
+                            self.awaiting_inherent.push(return_sender);
+                        }
+                    }
+                    Some(ProvisionableData(_, data)) => {
+                        let span = span.child("provisionable-data");
+                        let _timer = self.metrics.time_provisionable_data();
 
-						self.note_provisionable_data(&span, data);
-					}
-					None => break,
-				},
-				_ = self.inherent_after.ready().fuse() => {
-					let _span = span.child("send-inherent-data");
-					let return_senders = std::mem::take(&mut self.awaiting_inherent);
-					if !return_senders.is_empty() {
-						self.send_inherent_data(sender, return_senders).await;
-					}
-				}
-			}
-		}
+                        self.note_provisionable_data(&span, data);
+                    }
+                    None => break,
+                },
+                _ = self.inherent_after.ready().fuse() => {
+                    let _span = span.child("send-inherent-data");
+                    let return_senders = std::mem::take(&mut self.awaiting_inherent);
+                    if !return_senders.is_empty() {
+                        self.send_inherent_data(sender, return_senders).await;
+                    }
+                }
+            }
+        }
 
-		Ok(())
-	}
+        Ok(())
+    }
 
-	async fn send_inherent_data(
-		&mut self,
-		sender: &mut impl SubsystemSender,
-		return_senders: Vec<oneshot::Sender<ProvisionerInherentData>>,
-	) {
-		if let Err(err) = send_inherent_data(
-			self.relay_parent,
-			&self.signed_bitfields,
-			&self.backed_candidates,
-			return_senders,
-			sender,
-		)
-		.await
-		{
-			tracing::warn!(target: LOG_TARGET, err = ?err, "failed to assemble or send inherent data");
-			self.metrics.on_inherent_data_request(Err(()));
-		} else {
-			self.metrics.on_inherent_data_request(Ok(()));
-		}
-	}
+    async fn send_inherent_data(
+        &mut self,
+        sender: &mut impl SubsystemSender,
+        return_senders: Vec<oneshot::Sender<ProvisionerInherentData>>,
+    ) {
+        if let Err(err) = send_inherent_data(
+            self.relay_parent,
+            &self.signed_bitfields,
+            &self.backed_candidates,
+            return_senders,
+            sender,
+        )
+        .await
+        {
+            tracing::warn!(target: LOG_TARGET, err = ?err, "failed to assemble or send inherent data");
+            self.metrics.on_inherent_data_request(Err(()));
+        } else {
+            self.metrics.on_inherent_data_request(Ok(()));
+        }
+    }
 
-	fn note_provisionable_data(&mut self, span: &jaeger::Span, provisionable_data: ProvisionableData) {
-		match provisionable_data {
-			ProvisionableData::Bitfield(_, signed_bitfield) => {
-				self.signed_bitfields.push(signed_bitfield)
-			}
-			ProvisionableData::BackedCandidate(backed_candidate) => {
-				let _span = span.child("provisionable-backed")
-					.with_para_id(backed_candidate.descriptor().para_id);
-				self.backed_candidates.push(backed_candidate)
-			}
-			_ => {}
-		}
-	}
+    fn note_provisionable_data(
+        &mut self,
+        span: &jaeger::Span,
+        provisionable_data: ProvisionableData,
+    ) {
+        match provisionable_data {
+            ProvisionableData::Bitfield(_, signed_bitfield) => {
+                self.signed_bitfields.push(signed_bitfield)
+            }
+            ProvisionableData::BackedCandidate(backed_candidate) => {
+                let _span = span
+                    .child("provisionable-backed")
+                    .with_para_id(backed_candidate.descriptor().para_id);
+                self.backed_candidates.push(backed_candidate)
+            }
+            _ => {}
+        }
+    }
 }
 
 type CoreAvailability = BitVec<bitvec::order::Lsb0, u8>;
@@ -279,36 +288,40 @@ type CoreAvailability = BitVec<bitvec::order::Lsb0, u8>;
 /// maximize availability. So basically, include all bitfields. And then
 /// choose a coherent set of candidates along with that.
 async fn send_inherent_data(
-	relay_parent: Hash,
-	bitfields: &[SignedAvailabilityBitfield],
-	candidates: &[CandidateReceipt],
-	return_senders: Vec<oneshot::Sender<ProvisionerInherentData>>,
-	from_job: &mut impl SubsystemSender,
+    relay_parent: Hash,
+    bitfields: &[SignedAvailabilityBitfield],
+    candidates: &[CandidateReceipt],
+    return_senders: Vec<oneshot::Sender<ProvisionerInherentData>>,
+    from_job: &mut impl SubsystemSender,
 ) -> Result<(), Error> {
-	let availability_cores = request_availability_cores(relay_parent, from_job)
-		.await
-		.await.map_err(|err| Error::CanceledAvailabilityCores(err))??;
+    let availability_cores = request_availability_cores(relay_parent, from_job)
+        .await
+        .await
+        .map_err(|err| Error::CanceledAvailabilityCores(err))??;
 
-	let bitfields = select_availability_bitfields(&availability_cores, bitfields);
-	let candidates = select_candidates(
-		&availability_cores,
-		&bitfields,
-		candidates,
-		relay_parent,
-		from_job,
-	).await?;
+    let bitfields = select_availability_bitfields(&availability_cores, bitfields);
+    let candidates = select_candidates(
+        &availability_cores,
+        &bitfields,
+        candidates,
+        relay_parent,
+        from_job,
+    )
+    .await?;
 
-	let inherent_data = ProvisionerInherentData {
-		bitfields,
-		backed_candidates: candidates,
-		disputes: Vec::new(), // until disputes are implemented.
-	};
+    let inherent_data = ProvisionerInherentData {
+        bitfields,
+        backed_candidates: candidates,
+        disputes: Vec::new(), // until disputes are implemented.
+    };
 
-	for return_sender in return_senders {
-		return_sender.send(inherent_data.clone()).map_err(|_data| Error::InherentDataReturnChannel)?;
-	}
+    for return_sender in return_senders {
+        return_sender
+            .send(inherent_data.clone())
+            .map_err(|_data| Error::InherentDataReturnChannel)?;
+    }
 
-	Ok(())
+    Ok(())
 }
 
 /// In general, we want to pick all the bitfields. However, we have the following constraints:
@@ -322,174 +335,187 @@ async fn send_inherent_data(
 /// Note: This does not enforce any sorting precondition on the output; the ordering there will be unrelated
 /// to the sorting of the input.
 fn select_availability_bitfields(
-	cores: &[CoreState],
-	bitfields: &[SignedAvailabilityBitfield],
+    cores: &[CoreState],
+    bitfields: &[SignedAvailabilityBitfield],
 ) -> Vec<SignedAvailabilityBitfield> {
-	let mut selected: BTreeMap<ValidatorIndex, SignedAvailabilityBitfield> = BTreeMap::new();
+    let mut selected: BTreeMap<ValidatorIndex, SignedAvailabilityBitfield> = BTreeMap::new();
 
-	'a:
-	for bitfield in bitfields.iter().cloned() {
-		if bitfield.payload().0.len() != cores.len() {
-			continue
-		}
+    'a: for bitfield in bitfields.iter().cloned() {
+        if bitfield.payload().0.len() != cores.len() {
+            continue;
+        }
 
-		let is_better = selected.get(&bitfield.validator_index())
-			.map_or(true, |b| b.payload().0.count_ones() < bitfield.payload().0.count_ones());
+        let is_better = selected.get(&bitfield.validator_index()).map_or(true, |b| {
+            b.payload().0.count_ones() < bitfield.payload().0.count_ones()
+        });
 
-		if !is_better { continue }
+        if !is_better {
+            continue;
+        }
 
-		for (idx, _) in cores.iter().enumerate().filter(|v| !v.1.is_occupied()) {
-			// Bit is set for an unoccupied core - invalid
-			if *bitfield.payload().0.get(idx).as_deref().unwrap_or(&false) {
-				continue 'a
-			}
-		}
+        for (idx, _) in cores.iter().enumerate().filter(|v| !v.1.is_occupied()) {
+            // Bit is set for an unoccupied core - invalid
+            if *bitfield.payload().0.get(idx).as_deref().unwrap_or(&false) {
+                continue 'a;
+            }
+        }
 
-		let _ = selected.insert(bitfield.validator_index(), bitfield);
-	}
+        let _ = selected.insert(bitfield.validator_index(), bitfield);
+    }
 
-	selected.into_iter().map(|(_, b)| b).collect()
+    selected.into_iter().map(|(_, b)| b).collect()
 }
 
 /// Determine which cores are free, and then to the degree possible, pick a candidate appropriate to each free core.
 async fn select_candidates(
-	availability_cores: &[CoreState],
-	bitfields: &[SignedAvailabilityBitfield],
-	candidates: &[CandidateReceipt],
-	relay_parent: Hash,
-	sender: &mut impl SubsystemSender,
+    availability_cores: &[CoreState],
+    bitfields: &[SignedAvailabilityBitfield],
+    candidates: &[CandidateReceipt],
+    relay_parent: Hash,
+    sender: &mut impl SubsystemSender,
 ) -> Result<Vec<BackedCandidate>, Error> {
-	let block_number = get_block_number_under_construction(relay_parent, sender).await?;
+    let block_number = get_block_number_under_construction(relay_parent, sender).await?;
 
-	let mut selected_candidates =
-		Vec::with_capacity(candidates.len().min(availability_cores.len()));
+    let mut selected_candidates =
+        Vec::with_capacity(candidates.len().min(availability_cores.len()));
 
-	for (core_idx, core) in availability_cores.iter().enumerate() {
-		let (scheduled_core, assumption) = match core {
-			CoreState::Scheduled(scheduled_core) => (scheduled_core, OccupiedCoreAssumption::Free),
-			CoreState::Occupied(occupied_core) => {
-				if bitfields_indicate_availability(core_idx, bitfields, &occupied_core.availability) {
-					if let Some(ref scheduled_core) = occupied_core.next_up_on_available {
-						(scheduled_core, OccupiedCoreAssumption::Included)
-					} else {
-						continue;
-					}
-				} else {
-					if occupied_core.time_out_at != block_number {
-						continue;
-					}
-					if let Some(ref scheduled_core) = occupied_core.next_up_on_time_out {
-						(scheduled_core, OccupiedCoreAssumption::TimedOut)
-					} else {
-						continue;
-					}
-				}
-			}
-			CoreState::Free => continue,
-		};
+    for (core_idx, core) in availability_cores.iter().enumerate() {
+        let (scheduled_core, assumption) = match core {
+            CoreState::Scheduled(scheduled_core) => (scheduled_core, OccupiedCoreAssumption::Free),
+            CoreState::Occupied(occupied_core) => {
+                if bitfields_indicate_availability(core_idx, bitfields, &occupied_core.availability)
+                {
+                    if let Some(ref scheduled_core) = occupied_core.next_up_on_available {
+                        (scheduled_core, OccupiedCoreAssumption::Included)
+                    } else {
+                        continue;
+                    }
+                } else {
+                    if occupied_core.time_out_at != block_number {
+                        continue;
+                    }
+                    if let Some(ref scheduled_core) = occupied_core.next_up_on_time_out {
+                        (scheduled_core, OccupiedCoreAssumption::TimedOut)
+                    } else {
+                        continue;
+                    }
+                }
+            }
+            CoreState::Free => continue,
+        };
 
-		let validation_data = match request_persisted_validation_data(
-			relay_parent,
-			scheduled_core.para_id,
-			assumption,
-			sender,
-		)
-		.await
-		.await.map_err(|err| Error::CanceledPersistedValidationData(err))??
-		{
-			Some(v) => v,
-			None => continue,
-		};
+        let validation_data = match request_persisted_validation_data(
+            relay_parent,
+            scheduled_core.para_id,
+            assumption,
+            sender,
+        )
+        .await
+        .await
+        .map_err(|err| Error::CanceledPersistedValidationData(err))??
+        {
+            Some(v) => v,
+            None => continue,
+        };
 
-		let computed_validation_data_hash = validation_data.hash();
+        let computed_validation_data_hash = validation_data.hash();
 
-		// we arbitrarily pick the first of the backed candidates which match the appropriate selection criteria
-		if let Some(candidate) = candidates.iter().find(|backed_candidate| {
-			let descriptor = &backed_candidate.descriptor;
-			descriptor.para_id == scheduled_core.para_id
-				&& descriptor.persisted_validation_data_hash == computed_validation_data_hash
-		}) {
-			let candidate_hash = candidate.hash();
-			tracing::trace!(
-				target: LOG_TARGET,
-				"Selecting candidate {}. para_id={} core={}",
-				candidate_hash,
-				candidate.descriptor.para_id,
-				core_idx,
-			);
+        // we arbitrarily pick the first of the backed candidates which match the appropriate selection criteria
+        if let Some(candidate) = candidates.iter().find(|backed_candidate| {
+            let descriptor = &backed_candidate.descriptor;
+            descriptor.para_id == scheduled_core.para_id
+                && descriptor.persisted_validation_data_hash == computed_validation_data_hash
+        }) {
+            let candidate_hash = candidate.hash();
+            tracing::trace!(
+                target: LOG_TARGET,
+                "Selecting candidate {}. para_id={} core={}",
+                candidate_hash,
+                candidate.descriptor.para_id,
+                core_idx,
+            );
 
-			selected_candidates.push(candidate_hash);
-		}
-	}
+            selected_candidates.push(candidate_hash);
+        }
+    }
 
-	// now get the backed candidates corresponding to these candidate receipts
-	let (tx, rx) = oneshot::channel();
-	sender.send_message(CandidateBackingMessage::GetBackedCandidates(
-		relay_parent,
-		selected_candidates.clone(),
-		tx,
-	).into()).await;
-	let mut candidates = rx.await.map_err(|err| Error::CanceledBackedCandidates(err))?;
+    // now get the backed candidates corresponding to these candidate receipts
+    let (tx, rx) = oneshot::channel();
+    sender
+        .send_message(
+            CandidateBackingMessage::GetBackedCandidates(
+                relay_parent,
+                selected_candidates.clone(),
+                tx,
+            )
+            .into(),
+        )
+        .await;
+    let mut candidates = rx
+        .await
+        .map_err(|err| Error::CanceledBackedCandidates(err))?;
 
-	// `selected_candidates` is generated in ascending order by core index, and `GetBackedCandidates`
-	// _should_ preserve that property, but let's just make sure.
-	//
-	// We can't easily map from `BackedCandidate` to `core_idx`, but we know that every selected candidate
-	// maps to either 0 or 1 backed candidate, and the hashes correspond. Therefore, by checking them
-	// in order, we can ensure that the backed candidates are also in order.
-	let mut backed_idx = 0;
-	for selected in selected_candidates {
-		if selected == candidates.get(backed_idx).ok_or(Error::BackedCandidateOrderingProblem)?.hash() {
-			backed_idx += 1;
-		}
-	}
-	if candidates.len() != backed_idx {
-		Err(Error::BackedCandidateOrderingProblem)?;
-	}
+    // `selected_candidates` is generated in ascending order by core index, and `GetBackedCandidates`
+    // _should_ preserve that property, but let's just make sure.
+    //
+    // We can't easily map from `BackedCandidate` to `core_idx`, but we know that every selected candidate
+    // maps to either 0 or 1 backed candidate, and the hashes correspond. Therefore, by checking them
+    // in order, we can ensure that the backed candidates are also in order.
+    let mut backed_idx = 0;
+    for selected in selected_candidates {
+        if selected
+            == candidates
+                .get(backed_idx)
+                .ok_or(Error::BackedCandidateOrderingProblem)?
+                .hash()
+        {
+            backed_idx += 1;
+        }
+    }
+    if candidates.len() != backed_idx {
+        Err(Error::BackedCandidateOrderingProblem)?;
+    }
 
-	// keep only one candidate with validation code.
-	let mut with_validation_code = false;
-	candidates.retain(|c| {
-		if c.candidate.commitments.new_validation_code.is_some() {
-			if with_validation_code {
-				return false
-			}
+    // keep only one candidate with validation code.
+    let mut with_validation_code = false;
+    candidates.retain(|c| {
+        if c.candidate.commitments.new_validation_code.is_some() {
+            if with_validation_code {
+                return false;
+            }
 
-			with_validation_code = true;
-		}
+            with_validation_code = true;
+        }
 
-		true
-	});
+        true
+    });
 
-	tracing::debug!(
-		target: LOG_TARGET,
-		"Selected {} candidates for {} cores",
-		candidates.len(),
-		availability_cores.len(),
-	);
+    tracing::debug!(
+        target: LOG_TARGET,
+        "Selected {} candidates for {} cores",
+        candidates.len(),
+        availability_cores.len(),
+    );
 
-	Ok(candidates)
+    Ok(candidates)
 }
 
 /// Produces a block number 1 higher than that of the relay parent
 /// in the event of an invalid `relay_parent`, returns `Ok(0)`
 async fn get_block_number_under_construction(
-	relay_parent: Hash,
-	sender: &mut impl SubsystemSender,
+    relay_parent: Hash,
+    sender: &mut impl SubsystemSender,
 ) -> Result<BlockNumber, Error> {
-	let (tx, rx) = oneshot::channel();
-	sender
-		.send_message(ChainApiMessage::BlockNumber(
-			relay_parent,
-			tx,
-		).into())
-		.await;
+    let (tx, rx) = oneshot::channel();
+    sender
+        .send_message(ChainApiMessage::BlockNumber(relay_parent, tx).into())
+        .await;
 
-	match rx.await.map_err(|err| Error::CanceledBlockNumber(err))? {
-		Ok(Some(n)) => Ok(n + 1),
-		Ok(None) => Ok(0),
-		Err(err) => Err(err.into()),
-	}
+    match rx.await.map_err(|err| Error::CanceledBlockNumber(err))? {
+        Ok(Some(n)) => Ok(n + 1),
+        Ok(None) => Ok(0),
+        Err(err) => Err(err.into()),
+    }
 }
 
 /// The availability bitfield for a given core is the transpose
@@ -499,43 +525,43 @@ async fn get_block_number_under_construction(
 /// - bitwise-or it with the availability slice
 /// - count the 1 bits, compare to the total length; true on 2/3+
 fn bitfields_indicate_availability(
-	core_idx: usize,
-	bitfields: &[SignedAvailabilityBitfield],
-	availability: &CoreAvailability,
+    core_idx: usize,
+    bitfields: &[SignedAvailabilityBitfield],
+    availability: &CoreAvailability,
 ) -> bool {
-	let mut availability = availability.clone();
-	let availability_len = availability.len();
+    let mut availability = availability.clone();
+    let availability_len = availability.len();
 
-	for bitfield in bitfields {
-		let validator_idx = bitfield.validator_index().0 as usize;
-		match availability.get_mut(validator_idx) {
-			None => {
-				// in principle, this function might return a `Result<bool, Error>` so that we can more clearly express this error condition
-				// however, in practice, that would just push off an error-handling routine which would look a whole lot like this one.
-				// simpler to just handle the error internally here.
-				tracing::warn!(
-					target: LOG_TARGET,
-					validator_idx = %validator_idx,
-					availability_len = %availability_len,
-					"attempted to set a transverse bit at idx {} which is greater than bitfield size {}",
-					validator_idx,
-					availability_len,
-				);
+    for bitfield in bitfields {
+        let validator_idx = bitfield.validator_index().0 as usize;
+        match availability.get_mut(validator_idx) {
+            None => {
+                // in principle, this function might return a `Result<bool, Error>` so that we can more clearly express this error condition
+                // however, in practice, that would just push off an error-handling routine which would look a whole lot like this one.
+                // simpler to just handle the error internally here.
+                tracing::warn!(
+                    target: LOG_TARGET,
+                    validator_idx = %validator_idx,
+                    availability_len = %availability_len,
+                    "attempted to set a transverse bit at idx {} which is greater than bitfield size {}",
+                    validator_idx,
+                    availability_len,
+                );
 
-				return false;
-			}
-			Some(mut bit_mut) => *bit_mut |= bitfield.payload().0[core_idx],
-		}
-	}
+                return false;
+            }
+            Some(mut bit_mut) => *bit_mut |= bitfield.payload().0[core_idx],
+        }
+    }
 
-	3 * availability.count_ones() >= 2 * availability.len()
+    3 * availability.count_ones() >= 2 * availability.len()
 }
 
 #[derive(Clone)]
 struct MetricsInner {
-	inherent_data_requests: prometheus::CounterVec<prometheus::U64>,
-	request_inherent_data: prometheus::Histogram,
-	provisionable_data: prometheus::Histogram,
+    inherent_data_requests: prometheus::CounterVec<prometheus::U64>,
+    request_inherent_data: prometheus::Histogram,
+    provisionable_data: prometheus::Histogram,
 }
 
 /// Provisioner metrics.
@@ -543,62 +569,69 @@ struct MetricsInner {
 pub struct Metrics(Option<MetricsInner>);
 
 impl Metrics {
-	fn on_inherent_data_request(&self, response: Result<(), ()>) {
-		if let Some(metrics) = &self.0 {
-			match response {
-				Ok(()) => metrics.inherent_data_requests.with_label_values(&["succeeded"]).inc(),
-				Err(()) => metrics.inherent_data_requests.with_label_values(&["failed"]).inc(),
-			}
-		}
-	}
+    fn on_inherent_data_request(&self, response: Result<(), ()>) {
+        if let Some(metrics) = &self.0 {
+            match response {
+                Ok(()) => metrics
+                    .inherent_data_requests
+                    .with_label_values(&["succeeded"])
+                    .inc(),
+                Err(()) => metrics
+                    .inherent_data_requests
+                    .with_label_values(&["failed"])
+                    .inc(),
+            }
+        }
+    }
 
-	/// Provide a timer for `request_inherent_data` which observes on drop.
-	fn time_request_inherent_data(&self) -> Option<metrics::prometheus::prometheus::HistogramTimer> {
-		self.0.as_ref().map(|metrics| metrics.request_inherent_data.start_timer())
-	}
+    /// Provide a timer for `request_inherent_data` which observes on drop.
+    fn time_request_inherent_data(
+        &self,
+    ) -> Option<metrics::prometheus::prometheus::HistogramTimer> {
+        self.0
+            .as_ref()
+            .map(|metrics| metrics.request_inherent_data.start_timer())
+    }
 
-	/// Provide a timer for `provisionable_data` which observes on drop.
-	fn time_provisionable_data(&self) -> Option<metrics::prometheus::prometheus::HistogramTimer> {
-		self.0.as_ref().map(|metrics| metrics.provisionable_data.start_timer())
-	}
+    /// Provide a timer for `provisionable_data` which observes on drop.
+    fn time_provisionable_data(&self) -> Option<metrics::prometheus::prometheus::HistogramTimer> {
+        self.0
+            .as_ref()
+            .map(|metrics| metrics.provisionable_data.start_timer())
+    }
 }
 
 impl metrics::Metrics for Metrics {
-	fn try_register(registry: &prometheus::Registry) -> Result<Self, prometheus::PrometheusError> {
-		let metrics = MetricsInner {
-			inherent_data_requests: prometheus::register(
-				prometheus::CounterVec::new(
-					prometheus::Opts::new(
-						"parachain_inherent_data_requests_total",
-						"Number of InherentData requests served by provisioner.",
-					),
-					&["success"],
-				)?,
-				registry,
-			)?,
-			request_inherent_data: prometheus::register(
-				prometheus::Histogram::with_opts(
-					prometheus::HistogramOpts::new(
-						"parachain_provisioner_request_inherent_data",
-						"Time spent within `provisioner::request_inherent_data`",
-					)
-				)?,
-				registry,
-			)?,
-			provisionable_data: prometheus::register(
-				prometheus::Histogram::with_opts(
-					prometheus::HistogramOpts::new(
-						"parachain_provisioner_provisionable_data",
-						"Time spent within `provisioner::provisionable_data`",
-					)
-				)?,
-				registry,
-			)?,
-		};
-		Ok(Metrics(Some(metrics)))
-	}
+    fn try_register(registry: &prometheus::Registry) -> Result<Self, prometheus::PrometheusError> {
+        let metrics = MetricsInner {
+            inherent_data_requests: prometheus::register(
+                prometheus::CounterVec::new(
+                    prometheus::Opts::new(
+                        "parachain_inherent_data_requests_total",
+                        "Number of InherentData requests served by provisioner.",
+                    ),
+                    &["success"],
+                )?,
+                registry,
+            )?,
+            request_inherent_data: prometheus::register(
+                prometheus::Histogram::with_opts(prometheus::HistogramOpts::new(
+                    "parachain_provisioner_request_inherent_data",
+                    "Time spent within `provisioner::request_inherent_data`",
+                ))?,
+                registry,
+            )?,
+            provisionable_data: prometheus::register(
+                prometheus::Histogram::with_opts(prometheus::HistogramOpts::new(
+                    "parachain_provisioner_provisionable_data",
+                    "Time spent within `provisioner::provisionable_data`",
+                ))?,
+                registry,
+            )?,
+        };
+        Ok(Metrics(Some(metrics)))
+    }
 }
-
 
 /// The provisioning subsystem.
 pub type ProvisioningSubsystem<Spawner> = JobSubsystem<ProvisioningJob, Spawner>;

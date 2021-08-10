@@ -14,46 +14,45 @@
 // You should have received a copy of the GNU General Public License
 // along with Polkadot.  If not, see <http://www.gnu.org/licenses/>.
 
-use xcm::v0::{MultiAsset, Error as XcmError};
 use sp_std::result;
+use xcm::v0::{Error as XcmError, MultiAsset};
 
 /// Errors associated with [`MatchesFungibles`] operation.
 pub enum Error {
-	/// Asset not found.
-	AssetNotFound,
-	/// `MultiLocation` to `AccountId` conversion failed.
-	AccountIdConversionFailed,
-	/// `u128` amount to currency `Balance` conversion failed.
-	AmountToBalanceConversionFailed,
-	/// `MultiLocation` to `AssetId` conversion failed.
-	AssetIdConversionFailed,
+    /// Asset not found.
+    AssetNotFound,
+    /// `MultiLocation` to `AccountId` conversion failed.
+    AccountIdConversionFailed,
+    /// `u128` amount to currency `Balance` conversion failed.
+    AmountToBalanceConversionFailed,
+    /// `MultiLocation` to `AssetId` conversion failed.
+    AssetIdConversionFailed,
 }
 
 impl From<Error> for XcmError {
-	fn from(e: Error) -> Self {
-		use XcmError::FailedToTransactAsset;
-		match e {
-			Error::AssetNotFound => FailedToTransactAsset("AssetNotFound"),
-			Error::AccountIdConversionFailed => FailedToTransactAsset("AccountIdConversionFailed"),
-			Error::AmountToBalanceConversionFailed => FailedToTransactAsset("AmountToBalanceConversionFailed"),
-			Error::AssetIdConversionFailed => FailedToTransactAsset("AssetIdConversionFailed"),
-		}
-	}
+    fn from(e: Error) -> Self {
+        use XcmError::FailedToTransactAsset;
+        match e {
+            Error::AssetNotFound => FailedToTransactAsset("AssetNotFound"),
+            Error::AccountIdConversionFailed => FailedToTransactAsset("AccountIdConversionFailed"),
+            Error::AmountToBalanceConversionFailed => {
+                FailedToTransactAsset("AmountToBalanceConversionFailed")
+            }
+            Error::AssetIdConversionFailed => FailedToTransactAsset("AssetIdConversionFailed"),
+        }
+    }
 }
 
 pub trait MatchesFungibles<AssetId, Balance> {
-	fn matches_fungibles(a: &MultiAsset) -> result::Result<(AssetId, Balance), Error>;
+    fn matches_fungibles(a: &MultiAsset) -> result::Result<(AssetId, Balance), Error>;
 }
 
 #[impl_trait_for_tuples::impl_for_tuples(30)]
-impl<
-	AssetId: Clone,
-	Balance: Clone,
-> MatchesFungibles<AssetId, Balance> for Tuple {
-	fn matches_fungibles(a: &MultiAsset) -> result::Result<(AssetId, Balance), Error> {
-		for_tuples!( #(
+impl<AssetId: Clone, Balance: Clone> MatchesFungibles<AssetId, Balance> for Tuple {
+    fn matches_fungibles(a: &MultiAsset) -> result::Result<(AssetId, Balance), Error> {
+        for_tuples!( #(
 			match Tuple::matches_fungibles(a) { o @ Ok(_) => return o, _ => () }
 		)* );
-		Err(Error::AssetNotFound)
-	}
+        Err(Error::AssetNotFound)
+    }
 }

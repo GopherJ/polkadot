@@ -17,17 +17,20 @@
 //! All peersets and protocols used for parachains.
 
 use sc_network::config::{NonDefaultSetConfig, SetConfig};
-use std::{borrow::Cow, ops::{Index, IndexMut}};
+use std::{
+    borrow::Cow,
+    ops::{Index, IndexMut},
+};
 use strum::{EnumIter, IntoEnumIterator};
 
 /// The peer-sets and thus the protocols which are used for the network.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
 pub enum PeerSet {
-	/// The validation peer-set is responsible for all messages related to candidate validation and
-	/// communication among validators.
-	Validation,
-	/// The collation peer-set is used for validator<>collator communication.
-	Collation,
+    /// The validation peer-set is responsible for all messages related to candidate validation and
+    /// communication among validators.
+    Validation,
+    /// The collation peer-set is used for validator<>collator communication.
+    Collation,
 }
 
 /// Whether a node is an authority or not.
@@ -35,103 +38,107 @@ pub enum PeerSet {
 /// Peer set configuration gets adjusted accordingly.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum IsAuthority {
-	/// Node is authority.
-	Yes,
-	/// Node is not an authority.
-	No,
+    /// Node is authority.
+    Yes,
+    /// Node is not an authority.
+    No,
 }
 
 impl PeerSet {
-	/// Get `sc_network` peer set configurations for each peerset.
-	///
-	/// Those should be used in the network configuration to register the protocols with the
-	/// network service.
-	pub fn get_info(self, is_authority: IsAuthority) -> NonDefaultSetConfig {
-		let protocol = self.into_protocol_name();
-		let max_notification_size = 100 * 1024;
+    /// Get `sc_network` peer set configurations for each peerset.
+    ///
+    /// Those should be used in the network configuration to register the protocols with the
+    /// network service.
+    pub fn get_info(self, is_authority: IsAuthority) -> NonDefaultSetConfig {
+        let protocol = self.into_protocol_name();
+        let max_notification_size = 100 * 1024;
 
-		match self {
-			PeerSet::Validation => NonDefaultSetConfig {
-				notifications_protocol: protocol,
-				fallback_names: Vec::new(),
-				max_notification_size,
-				set_config: sc_network::config::SetConfig {
-					// we allow full nodes to connect to validators for gossip
-					// to ensure any `MIN_GOSSIP_PEERS` always include reserved peers
-					// we limit the amount of non-reserved slots to be less
-					// than `MIN_GOSSIP_PEERS` in total
-					in_peers: super::MIN_GOSSIP_PEERS as u32 / 2 - 1,
-					out_peers: super::MIN_GOSSIP_PEERS as u32 / 2 - 1,
-					reserved_nodes: Vec::new(),
-					non_reserved_mode: sc_network::config::NonReservedPeerMode::Accept,
-				},
-			},
-			PeerSet::Collation => NonDefaultSetConfig {
-				notifications_protocol: protocol,
-				fallback_names: Vec::new(),
-				max_notification_size,
-				set_config: SetConfig {
-					// Non-authority nodes don't need to accept incoming connections on this peer set:
-					in_peers: if is_authority == IsAuthority::Yes { 25 } else { 0 },
-					out_peers: 0,
-					reserved_nodes: Vec::new(),
-					non_reserved_mode: if is_authority == IsAuthority::Yes {
-						sc_network::config::NonReservedPeerMode::Accept
-					} else {
-						sc_network::config::NonReservedPeerMode::Deny
-					}
-				},
-			},
-		}
-	}
+        match self {
+            PeerSet::Validation => NonDefaultSetConfig {
+                notifications_protocol: protocol,
+                fallback_names: Vec::new(),
+                max_notification_size,
+                set_config: sc_network::config::SetConfig {
+                    // we allow full nodes to connect to validators for gossip
+                    // to ensure any `MIN_GOSSIP_PEERS` always include reserved peers
+                    // we limit the amount of non-reserved slots to be less
+                    // than `MIN_GOSSIP_PEERS` in total
+                    in_peers: super::MIN_GOSSIP_PEERS as u32 / 2 - 1,
+                    out_peers: super::MIN_GOSSIP_PEERS as u32 / 2 - 1,
+                    reserved_nodes: Vec::new(),
+                    non_reserved_mode: sc_network::config::NonReservedPeerMode::Accept,
+                },
+            },
+            PeerSet::Collation => NonDefaultSetConfig {
+                notifications_protocol: protocol,
+                fallback_names: Vec::new(),
+                max_notification_size,
+                set_config: SetConfig {
+                    // Non-authority nodes don't need to accept incoming connections on this peer set:
+                    in_peers: if is_authority == IsAuthority::Yes {
+                        25
+                    } else {
+                        0
+                    },
+                    out_peers: 0,
+                    reserved_nodes: Vec::new(),
+                    non_reserved_mode: if is_authority == IsAuthority::Yes {
+                        sc_network::config::NonReservedPeerMode::Accept
+                    } else {
+                        sc_network::config::NonReservedPeerMode::Deny
+                    },
+                },
+            },
+        }
+    }
 
-	/// Get the protocol name associated with each peer set as static str.
-	pub const fn get_protocol_name_static(self) -> &'static str {
-		match self {
-			PeerSet::Validation => "/polkadot/validation/1",
-			PeerSet::Collation => "/polkadot/collation/1",
-		}
-	}
+    /// Get the protocol name associated with each peer set as static str.
+    pub const fn get_protocol_name_static(self) -> &'static str {
+        match self {
+            PeerSet::Validation => "/polkadot/validation/1",
+            PeerSet::Collation => "/polkadot/collation/1",
+        }
+    }
 
-	/// Convert a peer set into a protocol name as understood by Substrate.
-	pub fn into_protocol_name(self) -> Cow<'static, str> {
-		self.get_protocol_name_static().into()
-	}
+    /// Convert a peer set into a protocol name as understood by Substrate.
+    pub fn into_protocol_name(self) -> Cow<'static, str> {
+        self.get_protocol_name_static().into()
+    }
 
-	/// Try parsing a protocol name into a peer set.
-	pub fn try_from_protocol_name(name: &Cow<'static, str>) -> Option<PeerSet> {
-		match name {
-			n if n == &PeerSet::Validation.into_protocol_name() => Some(PeerSet::Validation),
-			n if n == &PeerSet::Collation.into_protocol_name() => Some(PeerSet::Collation),
-			_ => None,
-		}
-	}
+    /// Try parsing a protocol name into a peer set.
+    pub fn try_from_protocol_name(name: &Cow<'static, str>) -> Option<PeerSet> {
+        match name {
+            n if n == &PeerSet::Validation.into_protocol_name() => Some(PeerSet::Validation),
+            n if n == &PeerSet::Collation.into_protocol_name() => Some(PeerSet::Collation),
+            _ => None,
+        }
+    }
 }
 
 /// A small and nifty collection that allows to store data pertaining to each peer set.
 #[derive(Debug, Default)]
 pub struct PerPeerSet<T> {
-	validation: T,
-	collation: T,
+    validation: T,
+    collation: T,
 }
 
 impl<T> Index<PeerSet> for PerPeerSet<T> {
-	type Output = T;
-	fn index(&self, index: PeerSet) -> &T {
-		match index {
-			PeerSet::Validation => &self.validation,
-			PeerSet::Collation => &self.collation,
-		}
-	}
+    type Output = T;
+    fn index(&self, index: PeerSet) -> &T {
+        match index {
+            PeerSet::Validation => &self.validation,
+            PeerSet::Collation => &self.collation,
+        }
+    }
 }
 
 impl<T> IndexMut<PeerSet> for PerPeerSet<T> {
-	fn index_mut(&mut self, index: PeerSet) -> &mut T {
-		match index {
-			PeerSet::Validation => &mut self.validation,
-			PeerSet::Collation => &mut self.collation,
-		}
-	}
+    fn index_mut(&mut self, index: PeerSet) -> &mut T {
+        match index {
+            PeerSet::Validation => &mut self.validation,
+            PeerSet::Collation => &mut self.collation,
+        }
+    }
 }
 
 /// Get `NonDefaultSetConfig`s for all available peer sets.
@@ -139,5 +146,5 @@ impl<T> IndexMut<PeerSet> for PerPeerSet<T> {
 /// Should be used during network configuration (added to [`NetworkConfiguration::extra_sets`])
 /// or shortly after startup to register the protocols with the network service.
 pub fn peer_sets_info(is_authority: IsAuthority) -> Vec<sc_network::config::NonDefaultSetConfig> {
-	PeerSet::iter().map(|s| s.get_info(is_authority)).collect()
+    PeerSet::iter().map(|s| s.get_info(is_authority)).collect()
 }

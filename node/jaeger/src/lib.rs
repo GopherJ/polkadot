@@ -62,83 +62,84 @@ use parking_lot::RwLock;
 use std::{result, sync::Arc};
 
 lazy_static::lazy_static! {
-	static ref INSTANCE: RwLock<Jaeger> = RwLock::new(Jaeger::None);
+    static ref INSTANCE: RwLock<Jaeger> = RwLock::new(Jaeger::None);
 }
 
 /// Stateful convenience wrapper around [`mick_jaeger`].
 pub enum Jaeger {
-	/// Launched and operational state.
-	Launched {
-		/// [`mick_jaeger`] provided API to record spans to.
-		traces_in: Arc<mick_jaeger::TracesIn>,
-	},
-	/// Preparation state with the necessary config to launch the collector.
-	Prep(JaegerConfig),
-	/// Uninitialized, suggests wrong API usage if encountered.
-	None,
+    /// Launched and operational state.
+    Launched {
+        /// [`mick_jaeger`] provided API to record spans to.
+        traces_in: Arc<mick_jaeger::TracesIn>,
+    },
+    /// Preparation state with the necessary config to launch the collector.
+    Prep(JaegerConfig),
+    /// Uninitialized, suggests wrong API usage if encountered.
+    None,
 }
 
 impl Jaeger {
-	/// Spawn the jaeger instance.
-	pub fn new(cfg: JaegerConfig) -> Self {
-		Jaeger::Prep(cfg)
-	}
+    /// Spawn the jaeger instance.
+    pub fn new(cfg: JaegerConfig) -> Self {
+        Jaeger::Prep(cfg)
+    }
 
-	/// Spawn the background task in order to send the tracing information out via udp
-	#[cfg(target_os = "unknown")]
-	pub fn launch<S: SpawnNamed>(self, _spawner: S) -> result::Result<(), JaegerError> {
-		Ok(())
-	}
+    /// Spawn the background task in order to send the tracing information out via udp
+    #[cfg(target_os = "unknown")]
+    pub fn launch<S: SpawnNamed>(self, _spawner: S) -> result::Result<(), JaegerError> {
+        Ok(())
+    }
 
-	/// Spawn the background task in order to send the tracing information out via udp
-	#[cfg(not(target_os = "unknown"))]
-	pub fn launch<S: SpawnNamed>(self, spawner: S) -> result::Result<(), JaegerError> {
-		let cfg = match self {
-			Self::Prep(cfg) => Ok(cfg),
-			Self::Launched { .. } => return Err(JaegerError::AlreadyLaunched),
-			Self::None => Err(JaegerError::MissingConfiguration),
-		}?;
+    /// Spawn the background task in order to send the tracing information out via udp
+    #[cfg(not(target_os = "unknown"))]
+    pub fn launch<S: SpawnNamed>(self, spawner: S) -> result::Result<(), JaegerError> {
+        let cfg = match self {
+            Self::Prep(cfg) => Ok(cfg),
+            Self::Launched { .. } => return Err(JaegerError::AlreadyLaunched),
+            Self::None => Err(JaegerError::MissingConfiguration),
+        }?;
 
-		let jaeger_agent = cfg.agent_addr;
+        let jaeger_agent = cfg.agent_addr;
 
-		log::info!("🐹 Collecting jaeger spans for {:?}", &jaeger_agent);
+        log::info!("🐹 Collecting jaeger spans for {:?}", &jaeger_agent);
 
-		let (traces_in, mut traces_out) =
-			mick_jaeger::init(mick_jaeger::Config { service_name: format!("polkadot-{}", cfg.node_name) });
+        let (traces_in, mut traces_out) = mick_jaeger::init(mick_jaeger::Config {
+            service_name: format!("polkadot-{}", cfg.node_name),
+        });
 
-		// Spawn a background task that pulls span information and sends them on the network.
-		spawner.spawn(
-			"jaeger-collector",
-			Box::pin(async move {
-				match async_std::net::UdpSocket::bind("0.0.0.0:0").await {
-					Ok(udp_socket) => loop {
-						let buf = traces_out.next().await;
-						// UDP sending errors happen only either if the API is misused or in case of missing privilege.
-						if let Err(e) = udp_socket.send_to(&buf, jaeger_agent).await {
-							log::debug!(target: "jaeger", "UDP send error: {}", e);
-						}
-					},
-					Err(e) => {
-						log::warn!(target: "jaeger", "UDP socket open error: {}", e);
-					}
-				}
-			}),
-		);
+        // Spawn a background task that pulls span information and sends them on the network.
+        spawner.spawn(
+            "jaeger-collector",
+            Box::pin(async move {
+                match async_std::net::UdpSocket::bind("0.0.0.0:0").await {
+                    Ok(udp_socket) => loop {
+                        let buf = traces_out.next().await;
+                        // UDP sending errors happen only either if the API is misused or in case of missing privilege.
+                        if let Err(e) = udp_socket.send_to(&buf, jaeger_agent).await {
+                            log::debug!(target: "jaeger", "UDP send error: {}", e);
+                        }
+                    },
+                    Err(e) => {
+                        log::warn!(target: "jaeger", "UDP socket open error: {}", e);
+                    }
+                }
+            }),
+        );
 
-		*INSTANCE.write() = Self::Launched { traces_in };
-		Ok(())
-	}
+        *INSTANCE.write() = Self::Launched { traces_in };
+        Ok(())
+    }
 
-	pub(crate) fn span<F>(&self, lazy_hash: F, span_name: &'static str) -> Option<mick_jaeger::Span>
-	where
-		F: Fn() -> TraceIdentifier,
-	{
-		if let Self::Launched { traces_in, .. } = self {
-			let ident = lazy_hash();
-			let trace_id = std::num::NonZeroU128::new(ident)?;
-			Some(traces_in.span(trace_id, span_name))
-		} else {
-			None
-		}
-	}
+    pub(crate) fn span<F>(&self, lazy_hash: F, span_name: &'static str) -> Option<mick_jaeger::Span>
+    where
+        F: Fn() -> TraceIdentifier,
+    {
+        if let Self::Launched { traces_in, .. } = self {
+            let ident = lazy_hash();
+            let trace_id = std::num::NonZeroU128::new(ident)?;
+            Some(traces_in.span(trace_id, span_name))
+        } else {
+            None
+        }
+    }
 }

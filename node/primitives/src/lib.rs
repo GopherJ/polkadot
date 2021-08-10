@@ -25,23 +25,23 @@
 use std::convert::TryInto;
 use std::pin::Pin;
 
-use serde::{Serialize, Deserialize};
 use futures::Future;
 use parity_scale_codec::{Decode, Encode};
-use sp_keystore::{CryptoStore, SyncCryptoStorePtr, Error as KeystoreError};
+use serde::{Deserialize, Serialize};
 use sp_application_crypto::AppKey;
+use sp_keystore::{CryptoStore, Error as KeystoreError, SyncCryptoStorePtr};
 
-pub use sp_core::traits::SpawnNamed;
 pub use sp_consensus_babe::{
-	Epoch as BabeEpoch, BabeEpochConfiguration, AllowedSlots as BabeAllowedSlots,
+    AllowedSlots as BabeAllowedSlots, BabeEpochConfiguration, Epoch as BabeEpoch,
 };
+pub use sp_core::traits::SpawnNamed;
 
 use polkadot_primitives::v1::{
-	BlakeTwo256, CandidateCommitments, CandidateHash, CollatorPair, CommittedCandidateReceipt,
-	CompactStatement, EncodeAs, Hash, HashT, HeadData, Id as ParaId, OutboundHrmpMessage,
-	PersistedValidationData, Signed, UncheckedSigned, UpwardMessage, ValidationCode,
-	ValidatorIndex, ValidatorSignature, ValidDisputeStatementKind, InvalidDisputeStatementKind,
-	CandidateReceipt, ValidatorId, SessionIndex, DisputeStatement, MAX_CODE_SIZE, MAX_POV_SIZE,
+    BlakeTwo256, CandidateCommitments, CandidateHash, CandidateReceipt, CollatorPair,
+    CommittedCandidateReceipt, CompactStatement, DisputeStatement, EncodeAs, Hash, HashT, HeadData,
+    Id as ParaId, InvalidDisputeStatementKind, OutboundHrmpMessage, PersistedValidationData,
+    SessionIndex, Signed, UncheckedSigned, UpwardMessage, ValidDisputeStatementKind,
+    ValidationCode, ValidatorId, ValidatorIndex, ValidatorSignature, MAX_CODE_SIZE, MAX_POV_SIZE,
 };
 
 pub use polkadot_parachain::primitives::BlockData;
@@ -65,55 +65,55 @@ pub type BlockWeight = u32;
 /// it is assigned to.
 #[derive(Clone, PartialEq, Eq, Encode, Decode)]
 pub enum Statement {
-	/// A statement that a validator seconds a candidate.
-	#[codec(index = 1)]
-	Seconded(CommittedCandidateReceipt),
-	/// A statement that a validator has deemed a candidate valid.
-	#[codec(index = 2)]
-	Valid(CandidateHash),
+    /// A statement that a validator seconds a candidate.
+    #[codec(index = 1)]
+    Seconded(CommittedCandidateReceipt),
+    /// A statement that a validator has deemed a candidate valid.
+    #[codec(index = 2)]
+    Valid(CandidateHash),
 }
 
 impl std::fmt::Debug for Statement {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Statement::Seconded(seconded) => write!(f, "Seconded: {:?}", seconded.descriptor),
-			Statement::Valid(hash) => write!(f, "Valid: {:?}", hash),
-		}
-	}
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Statement::Seconded(seconded) => write!(f, "Seconded: {:?}", seconded.descriptor),
+            Statement::Valid(hash) => write!(f, "Valid: {:?}", hash),
+        }
+    }
 }
 
 impl Statement {
-	/// Get the candidate hash referenced by this statement.
-	///
-	/// If this is a `Statement::Seconded`, this does hash the candidate receipt, which may be expensive
-	/// for large candidates.
-	pub fn candidate_hash(&self) -> CandidateHash {
-		match *self {
-			Statement::Valid(ref h) => *h,
-			Statement::Seconded(ref c) => c.hash(),
-		}
-	}
+    /// Get the candidate hash referenced by this statement.
+    ///
+    /// If this is a `Statement::Seconded`, this does hash the candidate receipt, which may be expensive
+    /// for large candidates.
+    pub fn candidate_hash(&self) -> CandidateHash {
+        match *self {
+            Statement::Valid(ref h) => *h,
+            Statement::Seconded(ref c) => c.hash(),
+        }
+    }
 
-	/// Transform this statement into its compact version, which references only the hash
-	/// of the candidate.
-	pub fn to_compact(&self) -> CompactStatement {
-		match *self {
-			Statement::Seconded(ref c) => CompactStatement::Seconded(c.hash()),
-			Statement::Valid(hash) => CompactStatement::Valid(hash),
-		}
-	}
+    /// Transform this statement into its compact version, which references only the hash
+    /// of the candidate.
+    pub fn to_compact(&self) -> CompactStatement {
+        match *self {
+            Statement::Seconded(ref c) => CompactStatement::Seconded(c.hash()),
+            Statement::Valid(hash) => CompactStatement::Valid(hash),
+        }
+    }
 }
 
 impl From<&'_ Statement> for CompactStatement {
-	fn from(stmt: &Statement) -> Self {
-		stmt.to_compact()
-	}
+    fn from(stmt: &Statement) -> Self {
+        stmt.to_compact()
+    }
 }
 
 impl EncodeAs<CompactStatement> for Statement {
-	fn encode_as(&self) -> Vec<u8> {
-		self.to_compact().encode()
-	}
+    fn encode_as(&self) -> Vec<u8> {
+        self.to_compact().encode()
+    }
 }
 
 /// A statement, the corresponding signature, and the index of the sender.
@@ -130,56 +130,56 @@ pub type UncheckedSignedFullStatement = UncheckedSigned<Statement, CompactStatem
 /// Candidate invalidity details
 #[derive(Debug)]
 pub enum InvalidCandidate {
-	/// Failed to execute.`validate_block`. This includes function panicking.
-	ExecutionError(String),
-	/// Validation outputs check doesn't pass.
-	InvalidOutputs,
-	/// Execution timeout.
-	Timeout,
-	/// Validation input is over the limit.
-	ParamsTooLarge(u64),
-	/// Code size is over the limit.
-	CodeTooLarge(u64),
-	/// Code does not decompress correctly.
-	CodeDecompressionFailure,
-	/// PoV does not decompress correctly.
-	PoVDecompressionFailure,
-	/// Validation function returned invalid data.
-	BadReturn,
-	/// Invalid relay chain parent.
-	BadParent,
-	/// POV hash does not match.
-	PoVHashMismatch,
-	/// Bad collator signature.
-	BadSignature,
-	/// Para head hash does not match.
-	ParaHeadHashMismatch,
-	/// Validation code hash does not match.
-	CodeHashMismatch,
+    /// Failed to execute.`validate_block`. This includes function panicking.
+    ExecutionError(String),
+    /// Validation outputs check doesn't pass.
+    InvalidOutputs,
+    /// Execution timeout.
+    Timeout,
+    /// Validation input is over the limit.
+    ParamsTooLarge(u64),
+    /// Code size is over the limit.
+    CodeTooLarge(u64),
+    /// Code does not decompress correctly.
+    CodeDecompressionFailure,
+    /// PoV does not decompress correctly.
+    PoVDecompressionFailure,
+    /// Validation function returned invalid data.
+    BadReturn,
+    /// Invalid relay chain parent.
+    BadParent,
+    /// POV hash does not match.
+    PoVHashMismatch,
+    /// Bad collator signature.
+    BadSignature,
+    /// Para head hash does not match.
+    ParaHeadHashMismatch,
+    /// Validation code hash does not match.
+    CodeHashMismatch,
 }
 
 /// Result of the validation of the candidate.
 #[derive(Debug)]
 pub enum ValidationResult {
-	/// Candidate is valid. The validation process yields these outputs and the persisted validation
-	/// data used to form inputs.
-	Valid(CandidateCommitments, PersistedValidationData),
-	/// Candidate is invalid.
-	Invalid(InvalidCandidate),
+    /// Candidate is valid. The validation process yields these outputs and the persisted validation
+    /// data used to form inputs.
+    Valid(CandidateCommitments, PersistedValidationData),
+    /// Candidate is invalid.
+    Invalid(InvalidCandidate),
 }
 
 /// A Proof-of-Validity
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
 pub struct PoV {
-	/// The block witness data.
-	pub block_data: BlockData,
+    /// The block witness data.
+    pub block_data: BlockData,
 }
 
 impl PoV {
-	/// Get the blake2-256 hash of the PoV.
-	pub fn hash(&self) -> Hash {
-		BlakeTwo256::hash_of(self)
-	}
+    /// Get the blake2-256 hash of the PoV.
+    pub fn hash(&self) -> Hash {
+        BlakeTwo256::hash_of(self)
+    }
 }
 
 /// The output of a collator.
@@ -190,39 +190,44 @@ impl PoV {
 /// - contains a proof of validity.
 #[derive(Clone, Encode, Decode)]
 pub struct Collation<BlockNumber = polkadot_primitives::v1::BlockNumber> {
-	/// Messages destined to be interpreted by the Relay chain itself.
-	pub upward_messages: Vec<UpwardMessage>,
-	/// The horizontal messages sent by the parachain.
-	pub horizontal_messages: Vec<OutboundHrmpMessage<ParaId>>,
-	/// New validation code.
-	pub new_validation_code: Option<ValidationCode>,
-	/// The head-data produced as a result of execution.
-	pub head_data: HeadData,
-	/// Proof to verify the state transition of the parachain.
-	pub proof_of_validity: PoV,
-	/// The number of messages processed from the DMQ.
-	pub processed_downward_messages: u32,
-	/// The mark which specifies the block number up to which all inbound HRMP messages are processed.
-	pub hrmp_watermark: BlockNumber,
+    /// Messages destined to be interpreted by the Relay chain itself.
+    pub upward_messages: Vec<UpwardMessage>,
+    /// The horizontal messages sent by the parachain.
+    pub horizontal_messages: Vec<OutboundHrmpMessage<ParaId>>,
+    /// New validation code.
+    pub new_validation_code: Option<ValidationCode>,
+    /// The head-data produced as a result of execution.
+    pub head_data: HeadData,
+    /// Proof to verify the state transition of the parachain.
+    pub proof_of_validity: PoV,
+    /// The number of messages processed from the DMQ.
+    pub processed_downward_messages: u32,
+    /// The mark which specifies the block number up to which all inbound HRMP messages are processed.
+    pub hrmp_watermark: BlockNumber,
 }
 
 /// Result of the [`CollatorFn`] invocation.
 pub struct CollationResult {
-	/// The collation that was build.
-	pub collation: Collation,
-	/// An optional result sender that should be informed about a successfully seconded collation.
-	///
-	/// There is no guarantee that this sender is informed ever about any result, it is completely okay to just drop it.
-	/// However, if it is called, it should be called with the signed statement of a parachain validator seconding the
-	/// collation.
-	pub result_sender: Option<futures::channel::oneshot::Sender<SignedFullStatement>>,
+    /// The collation that was build.
+    pub collation: Collation,
+    /// An optional result sender that should be informed about a successfully seconded collation.
+    ///
+    /// There is no guarantee that this sender is informed ever about any result, it is completely okay to just drop it.
+    /// However, if it is called, it should be called with the signed statement of a parachain validator seconding the
+    /// collation.
+    pub result_sender: Option<futures::channel::oneshot::Sender<SignedFullStatement>>,
 }
 
 impl CollationResult {
-	/// Convert into the inner values.
-	pub fn into_inner(self) -> (Collation, Option<futures::channel::oneshot::Sender<SignedFullStatement>>) {
-		(self.collation, self.result_sender)
-	}
+    /// Convert into the inner values.
+    pub fn into_inner(
+        self,
+    ) -> (
+        Collation,
+        Option<futures::channel::oneshot::Sender<SignedFullStatement>>,
+    ) {
+        (self.collation, self.result_sender)
+    }
 }
 
 /// Collation function.
@@ -232,176 +237,197 @@ impl CollationResult {
 ///
 /// Returns an optional [`CollationResult`].
 pub type CollatorFn = Box<
-	dyn Fn(Hash, &PersistedValidationData) -> Pin<Box<dyn Future<Output = Option<CollationResult>> + Send>>
-		+ Send
-		+ Sync,
+    dyn Fn(
+            Hash,
+            &PersistedValidationData,
+        ) -> Pin<Box<dyn Future<Output = Option<CollationResult>> + Send>>
+        + Send
+        + Sync,
 >;
 
 /// Configuration for the collation generator
 pub struct CollationGenerationConfig {
-	/// Collator's authentication key, so it can sign things.
-	pub key: CollatorPair,
-	/// Collation function. See [`CollatorFn`] for more details.
-	pub collator: CollatorFn,
-	/// The parachain that this collator collates for
-	pub para_id: ParaId,
+    /// Collator's authentication key, so it can sign things.
+    pub key: CollatorPair,
+    /// Collation function. See [`CollatorFn`] for more details.
+    pub collator: CollatorFn,
+    /// The parachain that this collator collates for
+    pub para_id: ParaId,
 }
 
 impl std::fmt::Debug for CollationGenerationConfig {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "CollationGenerationConfig {{ ... }}")
-	}
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CollationGenerationConfig {{ ... }}")
+    }
 }
 
 /// This is the data we keep available for each candidate included in the relay chain.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, Debug)]
 pub struct AvailableData {
-	/// The Proof-of-Validation of the candidate.
-	pub pov: std::sync::Arc<PoV>,
-	/// The persisted validation data needed for secondary checks.
-	pub validation_data: PersistedValidationData,
+    /// The Proof-of-Validation of the candidate.
+    pub pov: std::sync::Arc<PoV>,
+    /// The persisted validation data needed for secondary checks.
+    pub validation_data: PersistedValidationData,
 }
 
 /// A chunk of erasure-encoded block data.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Serialize, Deserialize, Debug, Hash)]
 pub struct ErasureChunk {
-	/// The erasure-encoded chunk of data belonging to the candidate block.
-	pub chunk: Vec<u8>,
-	/// The index of this erasure-encoded chunk of data.
-	pub index: ValidatorIndex,
-	/// Proof for this chunk's branch in the Merkle tree.
-	pub proof: Vec<Vec<u8>>,
+    /// The erasure-encoded chunk of data belonging to the candidate block.
+    pub chunk: Vec<u8>,
+    /// The index of this erasure-encoded chunk of data.
+    pub index: ValidatorIndex,
+    /// Proof for this chunk's branch in the Merkle tree.
+    pub proof: Vec<Vec<u8>>,
 }
 
 /// Compress a PoV, unless it exceeds the [`POV_BOMB_LIMIT`].
 #[cfg(not(target_os = "unknown"))]
 pub fn maybe_compress_pov(pov: PoV) -> PoV {
-	let PoV { block_data: BlockData(raw) } = pov;
-	let raw = sp_maybe_compressed_blob::compress(&raw, POV_BOMB_LIMIT)
-		.unwrap_or(raw);
+    let PoV {
+        block_data: BlockData(raw),
+    } = pov;
+    let raw = sp_maybe_compressed_blob::compress(&raw, POV_BOMB_LIMIT).unwrap_or(raw);
 
-	let pov = PoV { block_data: BlockData(raw) };
-	pov
+    let pov = PoV {
+        block_data: BlockData(raw),
+    };
+    pov
 }
 
 /// Tracked votes on candidates, for the purposes of dispute resolution.
 #[derive(Debug, Clone)]
 pub struct CandidateVotes {
-	/// The receipt of the candidate itself.
-	pub candidate_receipt: CandidateReceipt,
-	/// Votes of validity, sorted by validator index.
-	pub valid: Vec<(ValidDisputeStatementKind, ValidatorIndex, ValidatorSignature)>,
-	/// Votes of invalidity, sorted by validator index.
-	pub invalid: Vec<(InvalidDisputeStatementKind, ValidatorIndex, ValidatorSignature)>,
+    /// The receipt of the candidate itself.
+    pub candidate_receipt: CandidateReceipt,
+    /// Votes of validity, sorted by validator index.
+    pub valid: Vec<(
+        ValidDisputeStatementKind,
+        ValidatorIndex,
+        ValidatorSignature,
+    )>,
+    /// Votes of invalidity, sorted by validator index.
+    pub invalid: Vec<(
+        InvalidDisputeStatementKind,
+        ValidatorIndex,
+        ValidatorSignature,
+    )>,
 }
 
 impl CandidateVotes {
-	/// Get the set of all validators who have votes in the set, ascending.
-	pub fn voted_indices(&self) -> Vec<ValidatorIndex> {
-		let mut v: Vec<_> = self.valid.iter().map(|x| x.1).chain(
-			self.invalid.iter().map(|x| x.1)
-		).collect();
+    /// Get the set of all validators who have votes in the set, ascending.
+    pub fn voted_indices(&self) -> Vec<ValidatorIndex> {
+        let mut v: Vec<_> = self
+            .valid
+            .iter()
+            .map(|x| x.1)
+            .chain(self.invalid.iter().map(|x| x.1))
+            .collect();
 
-		v.sort();
-		v.dedup();
+        v.sort();
+        v.dedup();
 
-		v
-	}
+        v
+    }
 }
-
 
 /// A checked dispute statement from an associated validator.
 #[derive(Debug, Clone)]
 pub struct SignedDisputeStatement {
-	dispute_statement: DisputeStatement,
-	candidate_hash: CandidateHash,
-	validator_public: ValidatorId,
-	validator_signature: ValidatorSignature,
-	session_index: SessionIndex,
+    dispute_statement: DisputeStatement,
+    candidate_hash: CandidateHash,
+    validator_public: ValidatorId,
+    validator_signature: ValidatorSignature,
+    session_index: SessionIndex,
 }
 
 impl SignedDisputeStatement {
-	/// Create a new `SignedDisputeStatement`, which is only possible by checking the signature.
-	pub fn new_checked(
-		dispute_statement: DisputeStatement,
-		candidate_hash: CandidateHash,
-		session_index: SessionIndex,
-		validator_public: ValidatorId,
-		validator_signature: ValidatorSignature,
-	) -> Result<Self, ()> {
-		dispute_statement.check_signature(
-			&validator_public,
-			candidate_hash,
-			session_index,
-			&validator_signature,
-		).map(|_| SignedDisputeStatement {
-			dispute_statement,
-			candidate_hash,
-			validator_public,
-			validator_signature,
-			session_index,
-		})
-	}
+    /// Create a new `SignedDisputeStatement`, which is only possible by checking the signature.
+    pub fn new_checked(
+        dispute_statement: DisputeStatement,
+        candidate_hash: CandidateHash,
+        session_index: SessionIndex,
+        validator_public: ValidatorId,
+        validator_signature: ValidatorSignature,
+    ) -> Result<Self, ()> {
+        dispute_statement
+            .check_signature(
+                &validator_public,
+                candidate_hash,
+                session_index,
+                &validator_signature,
+            )
+            .map(|_| SignedDisputeStatement {
+                dispute_statement,
+                candidate_hash,
+                validator_public,
+                validator_signature,
+                session_index,
+            })
+    }
 
-	/// Sign this statement with the given keystore and key. Pass `valid = true` to
-	/// indicate validity of the candidate, and `valid = false` to indicate invalidity.
-	pub async fn sign_explicit(
-		keystore: &SyncCryptoStorePtr,
-		valid: bool,
-		candidate_hash: CandidateHash,
-		session_index: SessionIndex,
-		validator_public: ValidatorId,
-	) -> Result<Option<Self>, KeystoreError> {
-		let dispute_statement = if valid {
-			DisputeStatement::Valid(ValidDisputeStatementKind::Explicit)
-		} else {
-			DisputeStatement::Invalid(InvalidDisputeStatementKind::Explicit)
-		};
+    /// Sign this statement with the given keystore and key. Pass `valid = true` to
+    /// indicate validity of the candidate, and `valid = false` to indicate invalidity.
+    pub async fn sign_explicit(
+        keystore: &SyncCryptoStorePtr,
+        valid: bool,
+        candidate_hash: CandidateHash,
+        session_index: SessionIndex,
+        validator_public: ValidatorId,
+    ) -> Result<Option<Self>, KeystoreError> {
+        let dispute_statement = if valid {
+            DisputeStatement::Valid(ValidDisputeStatementKind::Explicit)
+        } else {
+            DisputeStatement::Invalid(InvalidDisputeStatementKind::Explicit)
+        };
 
-		let data = dispute_statement.payload_data(candidate_hash, session_index);
-		let signature = CryptoStore::sign_with(
-			&**keystore,
-			ValidatorId::ID,
-			&validator_public.clone().into(),
-			&data,
-		).await?;
+        let data = dispute_statement.payload_data(candidate_hash, session_index);
+        let signature = CryptoStore::sign_with(
+            &**keystore,
+            ValidatorId::ID,
+            &validator_public.clone().into(),
+            &data,
+        )
+        .await?;
 
-		let signature = match signature {
-			Some(sig) => sig.try_into().map_err(|_| KeystoreError::KeyNotSupported(ValidatorId::ID))?,
-			None => return Ok(None),
-		};
+        let signature = match signature {
+            Some(sig) => sig
+                .try_into()
+                .map_err(|_| KeystoreError::KeyNotSupported(ValidatorId::ID))?,
+            None => return Ok(None),
+        };
 
-		Ok(Some(Self {
-			dispute_statement,
-			candidate_hash,
-			validator_public,
-			validator_signature: signature,
-			session_index,
-		}))
-	}
+        Ok(Some(Self {
+            dispute_statement,
+            candidate_hash,
+            validator_public,
+            validator_signature: signature,
+            session_index,
+        }))
+    }
 
-	/// Access the underlying dispute statement
-	pub fn statement(&self) -> &DisputeStatement {
-		&self.dispute_statement
-	}
+    /// Access the underlying dispute statement
+    pub fn statement(&self) -> &DisputeStatement {
+        &self.dispute_statement
+    }
 
-	/// Access the underlying candidate hash.
-	pub fn candidate_hash(&self) -> &CandidateHash {
-		&self.candidate_hash
-	}
+    /// Access the underlying candidate hash.
+    pub fn candidate_hash(&self) -> &CandidateHash {
+        &self.candidate_hash
+    }
 
-	/// Access the underlying validator public key.
-	pub fn validator_public(&self) -> &ValidatorId {
-		&self.validator_public
-	}
+    /// Access the underlying validator public key.
+    pub fn validator_public(&self) -> &ValidatorId {
+        &self.validator_public
+    }
 
-	/// Access the underlying validator signature.
-	pub fn validator_signature(&self) -> &ValidatorSignature {
-		&self.validator_signature
-	}
+    /// Access the underlying validator signature.
+    pub fn validator_signature(&self) -> &ValidatorSignature {
+        &self.validator_signature
+    }
 
-	/// Access the underlying session index.
-	pub fn session_index(&self) -> SessionIndex {
-		self.session_index
-	}
+    /// Access the underlying session index.
+    pub fn session_index(&self) -> SessionIndex {
+        self.session_index
+    }
 }

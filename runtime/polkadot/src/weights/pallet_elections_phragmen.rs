@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/polkadot/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,85 +42,84 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_elections_phragmen.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_elections_phragmen::WeightInfo for WeightInfo<T> {
-	fn vote_equal(v: u32, ) -> Weight {
-		(40_098_000 as Weight)
-			// Standard Error: 3_000
-			.saturating_add((251_000 as Weight).saturating_mul(v as Weight))
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn vote_more(v: u32, ) -> Weight {
-		(62_907_000 as Weight)
-			// Standard Error: 5_000
-			.saturating_add((244_000 as Weight).saturating_mul(v as Weight))
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn vote_less(v: u32, ) -> Weight {
-		(62_646_000 as Weight)
-			// Standard Error: 5_000
-			.saturating_add((275_000 as Weight).saturating_mul(v as Weight))
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn remove_voter() -> Weight {
-		(57_669_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn submit_candidacy(c: u32, ) -> Weight {
-		(51_325_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((246_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn renounce_candidacy_candidate(c: u32, ) -> Weight {
-		(42_877_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((129_000 as Weight).saturating_mul(c as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn renounce_candidacy_members() -> Weight {
-		(65_943_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn renounce_candidacy_runners_up() -> Weight {
-		(45_901_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn remove_member_with_replacement() -> Weight {
-		(84_434_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(5 as Weight))
-	}
-	fn remove_member_wrong_refund() -> Weight {
-		(6_294_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-	}
-	fn clean_defunct_voters(v: u32, d: u32, ) -> Weight {
-		(0 as Weight)
-			// Standard Error: 34_000
-			.saturating_add((106_858_000 as Weight).saturating_mul(v as Weight))
-			// Standard Error: 32_000
-			.saturating_add((212_000 as Weight).saturating_mul(d as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(v as Weight)))
-			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(v as Weight)))
-	}
-	fn election_phragmen(c: u32, v: u32, e: u32, ) -> Weight {
-		(0 as Weight)
-			// Standard Error: 2_605_000
-			.saturating_add((122_952_000 as Weight).saturating_mul(c as Weight))
-			// Standard Error: 1_083_000
-			.saturating_add((102_007_000 as Weight).saturating_mul(v as Weight))
-			// Standard Error: 74_000
-			.saturating_add((6_719_000 as Weight).saturating_mul(e as Weight))
-			.saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(c as Weight)))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(v as Weight)))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
-	}
+    fn vote_equal(v: u32) -> Weight {
+        (40_098_000 as Weight)
+            // Standard Error: 3_000
+            .saturating_add((251_000 as Weight).saturating_mul(v as Weight))
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn vote_more(v: u32) -> Weight {
+        (62_907_000 as Weight)
+            // Standard Error: 5_000
+            .saturating_add((244_000 as Weight).saturating_mul(v as Weight))
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn vote_less(v: u32) -> Weight {
+        (62_646_000 as Weight)
+            // Standard Error: 5_000
+            .saturating_add((275_000 as Weight).saturating_mul(v as Weight))
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn remove_voter() -> Weight {
+        (57_669_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn submit_candidacy(c: u32) -> Weight {
+        (51_325_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((246_000 as Weight).saturating_mul(c as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn renounce_candidacy_candidate(c: u32) -> Weight {
+        (42_877_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((129_000 as Weight).saturating_mul(c as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn renounce_candidacy_members() -> Weight {
+        (65_943_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(4 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+    }
+    fn renounce_candidacy_runners_up() -> Weight {
+        (45_901_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn remove_member_with_replacement() -> Weight {
+        (84_434_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+    }
+    fn remove_member_wrong_refund() -> Weight {
+        (6_294_000 as Weight).saturating_add(T::DbWeight::get().reads(1 as Weight))
+    }
+    fn clean_defunct_voters(v: u32, d: u32) -> Weight {
+        (0 as Weight)
+            // Standard Error: 34_000
+            .saturating_add((106_858_000 as Weight).saturating_mul(v as Weight))
+            // Standard Error: 32_000
+            .saturating_add((212_000 as Weight).saturating_mul(d as Weight))
+            .saturating_add(T::DbWeight::get().reads(4 as Weight))
+            .saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(v as Weight)))
+            .saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(v as Weight)))
+    }
+    fn election_phragmen(c: u32, v: u32, e: u32) -> Weight {
+        (0 as Weight)
+            // Standard Error: 2_605_000
+            .saturating_add((122_952_000 as Weight).saturating_mul(c as Weight))
+            // Standard Error: 1_083_000
+            .saturating_add((102_007_000 as Weight).saturating_mul(v as Weight))
+            // Standard Error: 74_000
+            .saturating_add((6_719_000 as Weight).saturating_mul(e as Weight))
+            .saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(c as Weight)))
+            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(v as Weight)))
+            .saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(c as Weight)))
+    }
 }

@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/westend/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,17 +42,17 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_utility.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_utility::WeightInfo for WeightInfo<T> {
-	fn batch(c: u32, ) -> Weight {
-		(15_158_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((2_641_000 as Weight).saturating_mul(c as Weight))
-	}
-	fn as_derivative() -> Weight {
-		(5_540_000 as Weight)
-	}
-	fn batch_all(c: u32, ) -> Weight {
-		(17_590_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((3_269_000 as Weight).saturating_mul(c as Weight))
-	}
+    fn batch(c: u32) -> Weight {
+        (15_158_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((2_641_000 as Weight).saturating_mul(c as Weight))
+    }
+    fn as_derivative() -> Weight {
+        (5_540_000 as Weight)
+    }
+    fn batch_all(c: u32) -> Weight {
+        (17_590_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((3_269_000 as Weight).saturating_mul(c as Weight))
+    }
 }

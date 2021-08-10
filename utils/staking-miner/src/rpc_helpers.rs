@@ -38,70 +38,73 @@ macro_rules! params {
 
 /// Make the rpc request, returning `Ret`.
 pub(crate) async fn rpc<'a, Ret: serde::de::DeserializeOwned>(
-	client: &WsClient,
-	method: &'a str,
-	params: JsonRpcParams<'a>,
+    client: &WsClient,
+    method: &'a str,
+    params: JsonRpcParams<'a>,
 ) -> Result<Ret, Error> {
-	client.request::<Ret>(method, params).await.map_err(Into::into)
+    client
+        .request::<Ret>(method, params)
+        .await
+        .map_err(Into::into)
 }
 
 /// Make the rpc request, decode the outcome into `Dec`. Don't use for storage, it will fail for
 /// non-existent storage items.
 pub(crate) async fn rpc_decode<'a, Dec: codec::Decode>(
-	client: &WsClient,
-	method: &'a str,
-	params: JsonRpcParams<'a>,
+    client: &WsClient,
+    method: &'a str,
+    params: JsonRpcParams<'a>,
 ) -> Result<Dec, Error> {
-	let bytes = rpc::<sp_core::Bytes>(client, method, params).await?;
-	<Dec as codec::Decode>::decode(&mut &*bytes.0).map_err(Into::into)
+    let bytes = rpc::<sp_core::Bytes>(client, method, params).await?;
+    <Dec as codec::Decode>::decode(&mut &*bytes.0).map_err(Into::into)
 }
 
 /// Get the storage item.
 pub(crate) async fn get_storage<'a, T: codec::Decode>(
-	client: &WsClient,
-	params: JsonRpcParams<'a>,
+    client: &WsClient,
+    params: JsonRpcParams<'a>,
 ) -> Result<Option<T>, Error> {
-	let maybe_bytes = rpc::<Option<sp_core::Bytes>>(client, "state_getStorage", params).await?;
-	if let Some(bytes) = maybe_bytes {
-		let decoded = <T as codec::Decode>::decode(&mut &*bytes.0)?;
-		Ok(Some(decoded))
-	} else {
-		Ok(None)
-	}
+    let maybe_bytes = rpc::<Option<sp_core::Bytes>>(client, "state_getStorage", params).await?;
+    if let Some(bytes) = maybe_bytes {
+        let decoded = <T as codec::Decode>::decode(&mut &*bytes.0)?;
+        Ok(Some(decoded))
+    } else {
+        Ok(None)
+    }
 }
 
 use codec::{EncodeLike, FullCodec};
 use frame_support::storage::{StorageMap, StorageValue};
 #[allow(unused)]
 pub(crate) async fn get_storage_value_frame_v2<'a, V: StorageValue<T>, T: FullCodec, Hash>(
-	client: &WsClient,
-	maybe_at: Option<Hash>,
+    client: &WsClient,
+    maybe_at: Option<Hash>,
 ) -> Result<Option<V::Query>, Error>
 where
-	V::Query: codec::Decode,
-	Hash: serde::Serialize,
+    V::Query: codec::Decode,
+    Hash: serde::Serialize,
 {
-	let key = <V as StorageValue<T>>::hashed_key();
-	get_storage::<V::Query>(&client, params! { key, maybe_at }).await
+    let key = <V as StorageValue<T>>::hashed_key();
+    get_storage::<V::Query>(&client, params! { key, maybe_at }).await
 }
 
 #[allow(unused)]
 pub(crate) async fn get_storage_map_frame_v2<
-	'a,
-	Hash,
-	KeyArg: EncodeLike<K>,
-	K: FullCodec,
-	T: FullCodec,
-	M: StorageMap<K, T>,
+    'a,
+    Hash,
+    KeyArg: EncodeLike<K>,
+    K: FullCodec,
+    T: FullCodec,
+    M: StorageMap<K, T>,
 >(
-	client: &WsClient,
-	key: KeyArg,
-	maybe_at: Option<Hash>,
+    client: &WsClient,
+    key: KeyArg,
+    maybe_at: Option<Hash>,
 ) -> Result<Option<M::Query>, Error>
 where
-	M::Query: codec::Decode,
-	Hash: serde::Serialize,
+    M::Query: codec::Decode,
+    Hash: serde::Serialize,
 {
-	let key = <M as StorageMap<K, T>>::hashed_key_for(key);
-	get_storage::<M::Query>(&client, params! { key, maybe_at }).await
+    let key = <M as StorageMap<K, T>>::hashed_key_for(key);
+    get_storage::<M::Query>(&client, params! { key, maybe_at }).await
 }

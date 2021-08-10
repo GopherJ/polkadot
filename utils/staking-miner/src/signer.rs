@@ -21,53 +21,63 @@ use sp_core::crypto::Pair as _;
 use std::path::Path;
 
 pub(crate) const SIGNER_ACCOUNT_WILL_EXIST: &'static str =
-	"signer account is checked to exist upon startup; it can only die if it transfers funds out \
+    "signer account is checked to exist upon startup; it can only die if it transfers funds out \
 	 of it, or get slashed. If it does not exist at this point, it is likely due to a bug, or the \
 	 signer got slashed. Terminating.";
 
 /// Some information about the signer. Redundant at this point, but makes life easier.
 #[derive(Clone)]
 pub(crate) struct Signer {
-	/// The account id.
-	pub(crate) account: AccountId,
-	/// The full crypto key-pair.
-	pub(crate) pair: Pair,
-	/// The raw uri read from file.
-	pub(crate) uri: String,
+    /// The account id.
+    pub(crate) account: AccountId,
+    /// The full crypto key-pair.
+    pub(crate) pair: Pair,
+    /// The raw uri read from file.
+    pub(crate) uri: String,
 }
 
 pub(crate) async fn get_account_info<T: frame_system::Config>(
-	client: &WsClient,
-	who: &T::AccountId,
-	maybe_at: Option<T::Hash>,
+    client: &WsClient,
+    who: &T::AccountId,
+    maybe_at: Option<T::Hash>,
 ) -> Result<Option<frame_system::AccountInfo<Index, T::AccountData>>, Error> {
-	rpc_helpers::get_storage::<frame_system::AccountInfo<Index, T::AccountData>>(
-		client,
-		crate::params! {
-			sp_core::storage::StorageKey(<frame_system::Account<T>>::hashed_key_for(&who)),
-			maybe_at
-		},
-	)
-	.await
+    rpc_helpers::get_storage::<frame_system::AccountInfo<Index, T::AccountData>>(
+        client,
+        crate::params! {
+            sp_core::storage::StorageKey(<frame_system::Account<T>>::hashed_key_for(&who)),
+            maybe_at
+        },
+    )
+    .await
 }
 
 /// Read the signer account's uri from the given `path`.
 pub(crate) async fn read_signer_uri<
-	P: AsRef<Path>,
-	T: frame_system::Config<AccountId = AccountId, Index = Index>,
+    P: AsRef<Path>,
+    T: frame_system::Config<AccountId = AccountId, Index = Index>,
 >(
-	path: P,
-	client: &WsClient,
+    path: P,
+    client: &WsClient,
 ) -> Result<Signer, Error> {
-	let uri = std::fs::read_to_string(path)?;
+    let uri = std::fs::read_to_string(path)?;
 
-	// trim any trailing garbage.
-	let uri = uri.trim_end();
+    // trim any trailing garbage.
+    let uri = uri.trim_end();
 
-	let pair = Pair::from_string(&uri, None)?;
-	let account = T::AccountId::from(pair.public());
-	let _info =
-		get_account_info::<T>(&client, &account, None).await?.ok_or(Error::AccountDoesNotExists)?;
-	log::info!(target: LOG_TARGET, "loaded account {:?}, info: {:?}", &account, _info);
-	Ok(Signer { account, pair, uri: uri.to_string() })
+    let pair = Pair::from_string(&uri, None)?;
+    let account = T::AccountId::from(pair.public());
+    let _info = get_account_info::<T>(&client, &account, None)
+        .await?
+        .ok_or(Error::AccountDoesNotExists)?;
+    log::info!(
+        target: LOG_TARGET,
+        "loaded account {:?}, info: {:?}",
+        &account,
+        _info
+    );
+    Ok(Signer {
+        account,
+        pair,
+        uri: uri.to_string(),
+    })
 }

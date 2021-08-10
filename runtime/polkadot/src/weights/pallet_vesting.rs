@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/polkadot/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,46 +42,46 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_vesting.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_vesting::WeightInfo for WeightInfo<T> {
-	fn vest_locked(l: u32, ) -> Weight {
-		(40_549_000 as Weight)
-			// Standard Error: 7_000
-			.saturating_add((162_000 as Weight).saturating_mul(l as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn vest_unlocked(l: u32, ) -> Weight {
-		(43_713_000 as Weight)
-			// Standard Error: 4_000
-			.saturating_add((129_000 as Weight).saturating_mul(l as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn vest_other_locked(l: u32, ) -> Weight {
-		(40_331_000 as Weight)
-			// Standard Error: 7_000
-			.saturating_add((154_000 as Weight).saturating_mul(l as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn vest_other_unlocked(l: u32, ) -> Weight {
-		(43_179_000 as Weight)
-			// Standard Error: 4_000
-			.saturating_add((130_000 as Weight).saturating_mul(l as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn vested_transfer(l: u32, ) -> Weight {
-		(92_890_000 as Weight)
-			// Standard Error: 5_000
-			.saturating_add((156_000 as Weight).saturating_mul(l as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn force_vested_transfer(l: u32, ) -> Weight {
-		(92_001_000 as Weight)
-			// Standard Error: 5_000
-			.saturating_add((155_000 as Weight).saturating_mul(l as Weight))
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
+    fn vest_locked(l: u32) -> Weight {
+        (40_549_000 as Weight)
+            // Standard Error: 7_000
+            .saturating_add((162_000 as Weight).saturating_mul(l as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn vest_unlocked(l: u32) -> Weight {
+        (43_713_000 as Weight)
+            // Standard Error: 4_000
+            .saturating_add((129_000 as Weight).saturating_mul(l as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn vest_other_locked(l: u32) -> Weight {
+        (40_331_000 as Weight)
+            // Standard Error: 7_000
+            .saturating_add((154_000 as Weight).saturating_mul(l as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn vest_other_unlocked(l: u32) -> Weight {
+        (43_179_000 as Weight)
+            // Standard Error: 4_000
+            .saturating_add((130_000 as Weight).saturating_mul(l as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn vested_transfer(l: u32) -> Weight {
+        (92_890_000 as Weight)
+            // Standard Error: 5_000
+            .saturating_add((156_000 as Weight).saturating_mul(l as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn force_vested_transfer(l: u32) -> Weight {
+        (92_001_000 as Weight)
+            // Standard Error: 5_000
+            .saturating_add((155_000 as Weight).saturating_mul(l as Weight))
+            .saturating_add(T::DbWeight::get().reads(4 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+    }
 }

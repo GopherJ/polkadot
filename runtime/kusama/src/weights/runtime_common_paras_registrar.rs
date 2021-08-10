@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/kusama/src/weights/runtime_common_paras_registrar.rs
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,29 +42,29 @@ use sp_std::marker::PhantomData;
 /// Weight functions for runtime_common::paras_registrar.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> runtime_common::paras_registrar::WeightInfo for WeightInfo<T> {
-	fn reserve() -> Weight {
-		(59_279_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn register() -> Weight {
-		(4_148_907_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn force_register() -> Weight {
-		(4_144_844_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(5 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn deregister() -> Weight {
-		(90_495_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(4 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn swap() -> Weight {
-		(80_604_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(10 as Weight))
-			.saturating_add(T::DbWeight::get().writes(8 as Weight))
-	}
+    fn reserve() -> Weight {
+        (59_279_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn register() -> Weight {
+        (4_148_907_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+    }
+    fn force_register() -> Weight {
+        (4_144_844_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+    }
+    fn deregister() -> Weight {
+        (90_495_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(4 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+    }
+    fn swap() -> Weight {
+        (80_604_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(10 as Weight))
+            .saturating_add(T::DbWeight::get().writes(8 as Weight))
+    }
 }

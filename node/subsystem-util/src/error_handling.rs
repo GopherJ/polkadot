@@ -64,14 +64,14 @@ use thiserror::Error;
 /// 		Self(Fault::from_non_fatal(e))
 /// 	}
 /// }
-/// 
+///
 /// // Make an Error from a `Fatal` one.
 /// impl From<Fatal> for Error {
 /// 	fn from(f: Fatal) -> Self {
 /// 		Self(Fault::from_fatal(f))
 /// 	}
 /// }
-/// 
+///
 /// // Easy conversion from sub error types from other modules:
 /// impl From<runtime::Error> for Error {
 /// 	fn from(o: runtime::Error) -> Self {
@@ -107,50 +107,51 @@ use thiserror::Error;
 /// ```
 #[derive(Debug, Error)]
 pub enum Fault<E, F>
-	where
-		E: std::fmt::Debug + std::error::Error + 'static,
-		F: std::fmt::Debug + std::error::Error + 'static, {
-	/// Error is fatal and should be escalated up.
-	///
-	/// While we usually won't want to pattern match on those, a concrete descriptive enum might
-	/// still be a good idea for easy auditing of what can go wrong in a module and also makes for
-	/// good error messages thanks to `thiserror`.
-	#[error("Fatal error occurred.")]
-	Fatal(#[source] F),
-	/// Error that is not fatal, at least not yet at this level of execution.
-	#[error("Non fatal error occurred.")]
-	Err(#[source] E),
+where
+    E: std::fmt::Debug + std::error::Error + 'static,
+    F: std::fmt::Debug + std::error::Error + 'static,
+{
+    /// Error is fatal and should be escalated up.
+    ///
+    /// While we usually won't want to pattern match on those, a concrete descriptive enum might
+    /// still be a good idea for easy auditing of what can go wrong in a module and also makes for
+    /// good error messages thanks to `thiserror`.
+    #[error("Fatal error occurred.")]
+    Fatal(#[source] F),
+    /// Error that is not fatal, at least not yet at this level of execution.
+    #[error("Non fatal error occurred.")]
+    Err(#[source] E),
 }
 
 /// Due to typesystem constraints we cannot implement the following methods as standard
 /// `From::from` implementations. So no auto conversions by default, a simple `Result::map_err` is
 /// not too bad though.
 impl<E, F> Fault<E, F>
-	where
-		E: std::fmt::Debug + std::error::Error + 'static,
-		F: std::fmt::Debug + std::error::Error + 'static,
+where
+    E: std::fmt::Debug + std::error::Error + 'static,
+    F: std::fmt::Debug + std::error::Error + 'static,
 {
-	/// Build an `Fault` from compatible fatal error.
-	pub fn from_fatal<F1: Into<F>>(f: F1) -> Self {
-		Self::Fatal(f.into())
-	}
+    /// Build an `Fault` from compatible fatal error.
+    pub fn from_fatal<F1: Into<F>>(f: F1) -> Self {
+        Self::Fatal(f.into())
+    }
 
-	/// Build an `Fault` from compatible non-fatal error.
-	pub fn from_non_fatal<E1: Into<E>>(e: E1) -> Self {
-		Self::Err(e.into())
-	}
+    /// Build an `Fault` from compatible non-fatal error.
+    pub fn from_non_fatal<E1: Into<E>>(e: E1) -> Self {
+        Self::Err(e.into())
+    }
 
-	/// Build an `Fault` from a compatible other `Fault`.
-	pub fn from_other<E1, F1>(e: Fault<E1, F1>) -> Self
-	where
-		E1: Into<E> + std::fmt::Debug + std::error::Error + 'static,
-		F1: Into<F> + std::fmt::Debug + std::error::Error + 'static,
-	{
-		match e {
-			Fault::Fatal(f) => Self::from_fatal(f),
-			Fault::Err(e) => Self::from_non_fatal(e),
-		}
-	}
+    /// Build an `Fault` from a compatible other `Fault`.
+    pub fn from_other<E1, F1>(e: Fault<E1, F1>) -> Self
+    where
+        E1: Into<E> + std::fmt::Debug + std::error::Error + 'static,
+        F1: Into<F> + std::fmt::Debug + std::error::Error + 'static,
+    {
+        match e {
+            Fault::Fatal(f) => Self::from_fatal(f),
+            Fault::Err(e) => Self::from_non_fatal(e),
+        }
+    }
 }
 
 /// Unwrap non-fatal error and report fatal one.
@@ -188,14 +189,14 @@ impl<E, F> Fault<E, F>
 /// }
 ///
 /// ```
-pub fn unwrap_non_fatal<E,F>(result: Result<(), Fault<E,F>>) -> Result<Option<E>, F>
-	where
-		E: std::fmt::Debug + std::error::Error + 'static,
-		F: std::fmt::Debug + std::error::Error + Send + Sync + 'static
+pub fn unwrap_non_fatal<E, F>(result: Result<(), Fault<E, F>>) -> Result<Option<E>, F>
+where
+    E: std::fmt::Debug + std::error::Error + 'static,
+    F: std::fmt::Debug + std::error::Error + Send + Sync + 'static,
 {
-	match result {
-		Ok(()) => Ok(None),
-		Err(Fault::Fatal(f)) => Err(f),
-		Err(Fault::Err(e)) => Ok(Some(e)),
-	}
+    match result {
+        Ok(()) => Ok(None),
+        Err(Fault::Fatal(f)) => Err(f),
+        Err(Fault::Err(e)) => Ok(Some(e)),
+    }
 }

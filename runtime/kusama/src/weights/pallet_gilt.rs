@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/kusama/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,54 +42,53 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_gilt.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_gilt::WeightInfo for WeightInfo<T> {
-	fn place_bid(l: u32, ) -> Weight {
-		(51_257_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((171_000 as Weight).saturating_mul(l as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn place_bid_max() -> Weight {
-		(196_161_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn retract_bid(l: u32, ) -> Weight {
-		(51_317_000 as Weight)
-			// Standard Error: 0
-			.saturating_add((144_000 as Weight).saturating_mul(l as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn set_target() -> Weight {
-		(5_785_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn thaw() -> Weight {
-		(68_092_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn pursue_target_noop() -> Weight {
-		(3_242_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-	}
-	fn pursue_target_per_item(b: u32, ) -> Weight {
-		(52_205_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((9_944_000 as Weight).saturating_mul(b as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(b as Weight)))
-	}
-	fn pursue_target_per_queue(q: u32, ) -> Weight {
-		(16_887_000 as Weight)
-			// Standard Error: 6_000
-			.saturating_add((16_321_000 as Weight).saturating_mul(q as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(q as Weight)))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(q as Weight)))
-	}
+    fn place_bid(l: u32) -> Weight {
+        (51_257_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((171_000 as Weight).saturating_mul(l as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn place_bid_max() -> Weight {
+        (196_161_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn retract_bid(l: u32) -> Weight {
+        (51_317_000 as Weight)
+            // Standard Error: 0
+            .saturating_add((144_000 as Weight).saturating_mul(l as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn set_target() -> Weight {
+        (5_785_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn thaw() -> Weight {
+        (68_092_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn pursue_target_noop() -> Weight {
+        (3_242_000 as Weight).saturating_add(T::DbWeight::get().reads(1 as Weight))
+    }
+    fn pursue_target_per_item(b: u32) -> Weight {
+        (52_205_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((9_944_000 as Weight).saturating_mul(b as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(b as Weight)))
+    }
+    fn pursue_target_per_queue(q: u32) -> Weight {
+        (16_887_000 as Weight)
+            // Standard Error: 6_000
+            .saturating_add((16_321_000 as Weight).saturating_mul(q as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(q as Weight)))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(q as Weight)))
+    }
 }

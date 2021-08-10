@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/westend/src/weights/
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,77 +42,77 @@ use sp_std::marker::PhantomData;
 /// Weight functions for pallet_proxy.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_proxy::WeightInfo for WeightInfo<T> {
-	fn proxy(p: u32, ) -> Weight {
-		(24_799_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((132_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-	}
-	fn proxy_announced(a: u32, p: u32, ) -> Weight {
-		(56_202_000 as Weight)
-			// Standard Error: 6_000
-			.saturating_add((502_000 as Weight).saturating_mul(a as Weight))
-			// Standard Error: 7_000
-			.saturating_add((68_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn remove_announcement(a: u32, _p: u32, ) -> Weight {
-		(37_003_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((498_000 as Weight).saturating_mul(a as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn reject_announcement(a: u32, _p: u32, ) -> Weight {
-		(36_932_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((499_000 as Weight).saturating_mul(a as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn announce(a: u32, p: u32, ) -> Weight {
-		(50_165_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((499_000 as Weight).saturating_mul(a as Weight))
-			// Standard Error: 1_000
-			.saturating_add((118_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().reads(3 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn add_proxy(p: u32, ) -> Weight {
-		(35_416_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((191_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn remove_proxy(p: u32, ) -> Weight {
-		(35_237_000 as Weight)
-			// Standard Error: 2_000
-			.saturating_add((216_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn remove_proxies(p: u32, ) -> Weight {
-		(33_872_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((134_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn anonymous(p: u32, ) -> Weight {
-		(47_651_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((27_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-	fn kill_anonymous(p: u32, ) -> Weight {
-		(35_319_000 as Weight)
-			// Standard Error: 1_000
-			.saturating_add((137_000 as Weight).saturating_mul(p as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
+    fn proxy(p: u32) -> Weight {
+        (24_799_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((132_000 as Weight).saturating_mul(p as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+    }
+    fn proxy_announced(a: u32, p: u32) -> Weight {
+        (56_202_000 as Weight)
+            // Standard Error: 6_000
+            .saturating_add((502_000 as Weight).saturating_mul(a as Weight))
+            // Standard Error: 7_000
+            .saturating_add((68_000 as Weight).saturating_mul(p as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn remove_announcement(a: u32, _p: u32) -> Weight {
+        (37_003_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((498_000 as Weight).saturating_mul(a as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn reject_announcement(a: u32, _p: u32) -> Weight {
+        (36_932_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((499_000 as Weight).saturating_mul(a as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn announce(a: u32, p: u32) -> Weight {
+        (50_165_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((499_000 as Weight).saturating_mul(a as Weight))
+            // Standard Error: 1_000
+            .saturating_add((118_000 as Weight).saturating_mul(p as Weight))
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn add_proxy(p: u32) -> Weight {
+        (35_416_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((191_000 as Weight).saturating_mul(p as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn remove_proxy(p: u32) -> Weight {
+        (35_237_000 as Weight)
+            // Standard Error: 2_000
+            .saturating_add((216_000 as Weight).saturating_mul(p as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn remove_proxies(p: u32) -> Weight {
+        (33_872_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((134_000 as Weight).saturating_mul(p as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn anonymous(p: u32) -> Weight {
+        (47_651_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((27_000 as Weight).saturating_mul(p as Weight))
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
+    fn kill_anonymous(p: u32) -> Weight {
+        (35_319_000 as Weight)
+            // Standard Error: 1_000
+            .saturating_add((137_000 as Weight).saturating_mul(p as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
+    }
 }

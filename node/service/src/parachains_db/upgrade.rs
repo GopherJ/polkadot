@@ -13,7 +13,6 @@
 
 //! Migration code for the parachain's DB.
 
-
 #![cfg(feature = "full-node")]
 
 use std::fs;
@@ -31,62 +30,61 @@ const CURRENT_VERSION: Version = 0;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-	#[error("I/O error when reading/writing the version")]
-	Io(#[from] io::Error),
-	#[error("The version file format is incorrect")]
-	CorruptedVersionFile,
-	#[error("Future version (expected {current:?}, found {got:?})")]
-	FutureVersion {
-		current: Version,
-		got: Version,
-	},
+    #[error("I/O error when reading/writing the version")]
+    Io(#[from] io::Error),
+    #[error("The version file format is incorrect")]
+    CorruptedVersionFile,
+    #[error("Future version (expected {current:?}, found {got:?})")]
+    FutureVersion { current: Version, got: Version },
 }
 
 impl From<Error> for io::Error {
-	fn from(me: Error) -> io::Error {
-		match me {
-			Error::Io(e) => e,
-			_ => super::other_io_error(me.to_string()),
-		}
-	}
+    fn from(me: Error) -> io::Error {
+        match me {
+            Error::Io(e) => e,
+            _ => super::other_io_error(me.to_string()),
+        }
+    }
 }
 
 /// Try upgrading parachain's database to the current version.
 pub fn try_upgrade_db(db_path: &Path) -> Result<(), Error> {
-	let is_empty = db_path.read_dir().map_or(true, |mut d| d.next().is_none());
-	if !is_empty {
-		match current_version(db_path)? {
-			CURRENT_VERSION => (),
-			v => return Err(Error::FutureVersion {
-				current: CURRENT_VERSION,
-				got: v,
-			}),
-		}
-	}
+    let is_empty = db_path.read_dir().map_or(true, |mut d| d.next().is_none());
+    if !is_empty {
+        match current_version(db_path)? {
+            CURRENT_VERSION => (),
+            v => {
+                return Err(Error::FutureVersion {
+                    current: CURRENT_VERSION,
+                    got: v,
+                })
+            }
+        }
+    }
 
-	update_version(db_path)
+    update_version(db_path)
 }
 
 /// Reads current database version from the file at given path.
 /// If the file does not exist, assumes version 0.
 fn current_version(path: &Path) -> Result<Version, Error> {
-	match fs::read_to_string(version_file_path(path)) {
-		Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(0),
-		Err(err) => Err(err.into()),
-		Ok(content) => u32::from_str(&content).map_err(|_| Error::CorruptedVersionFile),
-	}
+    match fs::read_to_string(version_file_path(path)) {
+        Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(0),
+        Err(err) => Err(err.into()),
+        Ok(content) => u32::from_str(&content).map_err(|_| Error::CorruptedVersionFile),
+    }
 }
 
 /// Writes current database version to the file.
 /// Creates a new file if the version file does not exist yet.
 fn update_version(path: &Path) -> Result<(), Error> {
-	fs::create_dir_all(path)?;
-	fs::write(version_file_path(path), CURRENT_VERSION.to_string()).map_err(Into::into)
+    fs::create_dir_all(path)?;
+    fs::write(version_file_path(path), CURRENT_VERSION.to_string()).map_err(Into::into)
 }
 
 /// Returns the version file path.
 fn version_file_path(path: &Path) -> PathBuf {
-	let mut file_path = path.to_owned();
-	file_path.push(VERSION_FILE_NAME);
-	file_path
+    let mut file_path = path.to_owned();
+    file_path.push(VERSION_FILE_NAME);
+    file_path
 }

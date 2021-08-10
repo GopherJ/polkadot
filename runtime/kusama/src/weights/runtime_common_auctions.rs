@@ -33,7 +33,6 @@
 // --header=./file_header.txt
 // --output=./runtime/kusama/src/weights/runtime_common_auctions.rs
 
-
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
@@ -43,24 +42,24 @@ use sp_std::marker::PhantomData;
 /// Weight functions for runtime_common::auctions.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> runtime_common::auctions::WeightInfo for WeightInfo<T> {
-	fn new_auction() -> Weight {
-		(29_554_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
-	}
-	fn bid() -> Weight {
-		(154_464_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(8 as Weight))
-			.saturating_add(T::DbWeight::get().writes(4 as Weight))
-	}
-	fn on_initialize() -> Weight {
-		(33_239_172_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(3688 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3683 as Weight))
-	}
-	fn cancel_auction() -> Weight {
-		(7_021_314_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(73 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3673 as Weight))
-	}
+    fn new_auction() -> Weight {
+        (29_554_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
+    }
+    fn bid() -> Weight {
+        (154_464_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(8 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+    }
+    fn on_initialize() -> Weight {
+        (33_239_172_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3688 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3683 as Weight))
+    }
+    fn cancel_auction() -> Weight {
+        (7_021_314_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(73 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3673 as Weight))
+    }
 }
